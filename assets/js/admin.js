@@ -90,7 +90,7 @@
 			url: ylcAdmin.ajaxUrl,
 			type: 'POST',
 			data: {
-				action: 'ylc_get_scan_status',
+				action: 'yoko_lc_get_scan_status',
 				nonce: ylcAdmin.nonce
 			},
 			success: function(response) {
@@ -148,7 +148,7 @@
 			url: ylcAdmin.ajaxUrl,
 			type: 'POST',
 			data: {
-				action: 'ylc_start_scan',
+				action: 'yoko_lc_start_scan',
 				nonce: ylcAdmin.nonce
 			},
 			success: function(response) {
@@ -183,7 +183,7 @@
 			url: ylcAdmin.ajaxUrl,
 			type: 'POST',
 			data: {
-				action: 'ylc_pause_scan',
+				action: 'yoko_lc_pause_scan',
 				scan_id: scanId,
 				nonce: ylcAdmin.nonce
 			},
@@ -220,7 +220,7 @@
 			url: ylcAdmin.ajaxUrl,
 			type: 'POST',
 			data: {
-				action: 'ylc_resume_scan',
+				action: 'yoko_lc_resume_scan',
 				scan_id: scanId,
 				nonce: ylcAdmin.nonce
 			},
@@ -260,7 +260,7 @@
 			url: ylcAdmin.ajaxUrl,
 			type: 'POST',
 			data: {
-				action: 'ylc_cancel_scan',
+				action: 'yoko_lc_cancel_scan',
 				scan_id: scanId,
 				nonce: ylcAdmin.nonce
 			},
@@ -301,7 +301,7 @@
 			url: ylcAdmin.ajaxUrl,
 			type: 'POST',
 			data: {
-				action: 'ylc_recheck_url',
+				action: 'yoko_lc_recheck_url',
 				url_id: urlId,
 				nonce: ylcAdmin.nonce
 			},
@@ -346,7 +346,7 @@
 			url: ylcAdmin.ajaxUrl,
 			type: 'POST',
 			data: {
-				action: 'ylc_ignore_link',
+				action: 'yoko_lc_ignore_link',
 				link_id: linkId,
 				nonce: ylcAdmin.nonce
 			},
