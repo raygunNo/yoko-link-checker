@@ -88,7 +88,7 @@ final class Plugin {
 		 * @since 1.0.0
 		 * @param Plugin $plugin The plugin instance.
 		 */
-		do_action( 'ylc_booted', $this );
+		do_action( 'yoko_lc_booted', $this );
 	}
 
 	/**
@@ -101,12 +101,12 @@ final class Plugin {
 	 * @return void
 	 */
 	private function maybe_run_activation(): void {
-		$schema_version = get_option( 'ylc_schema_version', '' );
+		$schema_version = get_option( 'yoko_lc_schema_version', '' );
 
-		if ( $schema_version !== YLC_VERSION ) {
-			require_once YLC_PLUGIN_DIR . 'src/Activator.php';
+		if ( YOKO_LC_VERSION !== $schema_version ) {
+			require_once YOKO_LC_PLUGIN_DIR . 'src/Activator.php';
 			\YokoLinkChecker\Activator::activate();
-			update_option( 'ylc_schema_version', YLC_VERSION );
+			update_option( 'yoko_lc_schema_version', YOKO_LC_VERSION );
 		}
 	}
 
@@ -117,7 +117,7 @@ final class Plugin {
 	 * @return void
 	 */
 	private function register_cron_hooks(): void {
-		add_action( 'ylc_process_scan_batch', array( $this, 'handle_cron_batch' ), 10, 1 );
+		add_action( 'yoko_lc_process_scan_batch', array( $this, 'handle_cron_batch' ), 10, 1 );
 	}
 
 	/**
@@ -217,7 +217,7 @@ final class Plugin {
 				 * @since 1.0.0
 				 * @param ExtractorRegistry $registry The extractor registry.
 				 */
-				do_action( 'ylc_register_extractors', $registry );
+				do_action( 'yoko_lc_register_extractors', $registry );
 
 				return $registry;
 			}
@@ -391,7 +391,7 @@ final class Plugin {
 	 * @param callable():T    $factory Factory function to create the service.
 	 * @return T
 	 */
-	private function get_service( string $key, callable $factory ): object {
+	private function get_service( string $key, callable $factory ): object { // phpcs:ignore Squiz.Commenting.FunctionComment.IncorrectTypeHint
 		if ( ! isset( $this->services[ $key ] ) ) {
 			$this->services[ $key ] = $factory();
 		}
@@ -406,7 +406,7 @@ final class Plugin {
 	 * @return string
 	 */
 	public function version(): string {
-		return YLC_VERSION;
+		return YOKO_LC_VERSION;
 	}
 
 	/**
@@ -416,7 +416,7 @@ final class Plugin {
 	 * @return string
 	 */
 	public function path(): string {
-		return YLC_PLUGIN_DIR;
+		return YOKO_LC_PLUGIN_DIR;
 	}
 
 	/**
@@ -426,6 +426,6 @@ final class Plugin {
 	 * @return string
 	 */
 	public function url(): string {
-		return YLC_PLUGIN_URL;
+		return YOKO_LC_PLUGIN_URL;
 	}
 }

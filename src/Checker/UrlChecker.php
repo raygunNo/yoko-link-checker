@@ -141,9 +141,9 @@ final class UrlChecker {
 	 * Process HTTP response into CheckResult.
 	 *
 	 * @since 1.0.0
-	 * @param string           $url           Checked URL.
-	 * @param array|\WP_Error  $response      HTTP response.
-	 * @param int              $response_time Response time in ms.
+	 * @param string          $url           Checked URL.
+	 * @param array|\WP_Error $response      HTTP response.
+	 * @param int             $response_time Response time in ms.
 	 * @return CheckResult
 	 */
 	private function process_response( string $url, $response, int $response_time ): CheckResult {
@@ -231,7 +231,7 @@ final class UrlChecker {
 		 * @param bool   $use_head Whether to use HEAD.
 		 * @param string $url      The URL being checked.
 		 */
-		return apply_filters( 'ylc_use_head_request', true, $url );
+		return apply_filters( 'yoko_lc_use_head_request', true, $url );
 	}
 
 	/**

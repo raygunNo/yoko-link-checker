@@ -44,7 +44,7 @@ final class ExtractorRegistry {
 	 */
 	public function register( ExtractorInterface $extractor ): void {
 		$this->extractors[ $extractor->get_id() ] = $extractor;
-		$this->sorted                              = false;
+		$this->sorted                             = false;
 	}
 
 	/**

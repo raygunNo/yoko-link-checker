@@ -48,27 +48,27 @@ final class StatusClassifier {
 	 * @var array<string, array<string, mixed>>
 	 */
 	private const KNOWN_QUIRKS = array(
-		'linkedin.com'     => array(
+		'linkedin.com'  => array(
 			'codes'  => array( 999 ),
 			'status' => 'warning',
 			'reason' => 'LinkedIn blocks automated requests',
 		),
-		'facebook.com'     => array(
+		'facebook.com'  => array(
 			'codes'  => array( 403 ),
 			'status' => 'warning',
 			'reason' => 'Facebook may block automated requests',
 		),
-		'instagram.com'    => array(
+		'instagram.com' => array(
 			'codes'  => array( 403 ),
 			'status' => 'warning',
 			'reason' => 'Instagram may block automated requests',
 		),
-		'twitter.com'      => array(
+		'twitter.com'   => array(
 			'codes'  => array( 400, 403 ),
 			'status' => 'warning',
 			'reason' => 'Twitter/X may block automated requests',
 		),
-		'x.com'            => array(
+		'x.com'         => array(
 			'codes'  => array( 400, 403 ),
 			'status' => 'warning',
 			'reason' => 'Twitter/X may block automated requests',
@@ -126,7 +126,7 @@ final class StatusClassifier {
 		 * @param string      $url       Checked URL.
 		 * @param string|null $final_url Final URL after redirects.
 		 */
-		return apply_filters( 'ylc_classify_status', $status, $http_code, $url, $final_url );
+		return apply_filters( 'yoko_lc_classify_status', $status, $http_code, $url, $final_url );
 	}
 
 	/**

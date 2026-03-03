@@ -7,7 +7,7 @@
  * Requires at least: 6.0
  * Requires PHP:      8.0
  * Author:            Yoko Co.
- * Author URI:        https://yokoco.com	
+ * Author URI:        https://yokoco.com
  * License:           GPL v2 or later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       yoko-link-checker
@@ -24,11 +24,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Plugin constants.
-define( 'YLC_VERSION', '1.0.0' );
-define( 'YLC_PLUGIN_FILE', __FILE__ );
-define( 'YLC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
-define( 'YLC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
-define( 'YLC_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
+define( 'YOKO_LC_VERSION', '1.0.0' );
+define( 'YOKO_LC_PLUGIN_FILE', __FILE__ );
+define( 'YOKO_LC_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
+define( 'YOKO_LC_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
+define( 'YOKO_LC_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
 
 // Minimum requirements check.
 if ( version_compare( PHP_VERSION, '8.0', '<' ) ) {
@@ -49,9 +49,10 @@ if ( version_compare( PHP_VERSION, '8.0', '<' ) ) {
 
 // Autoloader.
 spl_autoload_register(
+	// phpcs:ignore Universal.NamingConventions.NoReservedKeywordParameterNames.classFound -- Standard autoloader parameter name.
 	function ( string $class ): void {
 		$prefix   = 'YokoLinkChecker\\';
-		$base_dir = YLC_PLUGIN_DIR . 'src/';
+		$base_dir = YOKO_LC_PLUGIN_DIR . 'src/';
 
 		// Check if the class uses the namespace prefix.
 		$len = strlen( $prefix );
@@ -78,7 +79,7 @@ spl_autoload_register(
  * @since 1.0.0
  * @return YokoLinkChecker\Plugin
  */
-function ylc(): YokoLinkChecker\Plugin {
+function yoko_lc(): YokoLinkChecker\Plugin {
 	static $instance = null;
 
 	if ( null === $instance ) {
@@ -92,7 +93,7 @@ function ylc(): YokoLinkChecker\Plugin {
 register_activation_hook(
 	__FILE__,
 	function (): void {
-		require_once YLC_PLUGIN_DIR . 'src/Activator.php';
+		require_once YOKO_LC_PLUGIN_DIR . 'src/Activator.php';
 		YokoLinkChecker\Activator::activate();
 	}
 );
@@ -101,7 +102,7 @@ register_activation_hook(
 register_deactivation_hook(
 	__FILE__,
 	function (): void {
-		require_once YLC_PLUGIN_DIR . 'src/Deactivator.php';
+		require_once YOKO_LC_PLUGIN_DIR . 'src/Deactivator.php';
 		YokoLinkChecker\Deactivator::deactivate();
 	}
 );
@@ -114,10 +115,10 @@ add_action(
 		load_plugin_textdomain(
 			'yoko-link-checker',
 			false,
-			dirname( YLC_PLUGIN_BASENAME ) . '/languages'
+			dirname( YOKO_LC_PLUGIN_BASENAME ) . '/languages'
 		);
 
 		// Boot the plugin.
-		ylc()->boot();
+		yoko_lc()->boot();
 	}
 );

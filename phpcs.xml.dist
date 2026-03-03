@@ -25,10 +25,30 @@
     <rule ref="WordPress.NamingConventions.PrefixAllGlobals">
         <properties>
             <property name="prefixes" type="array">
-                <element value="ylc"/>
+                <element value="yoko_lc"/>
+                <element value="YOKO_LC"/>
                 <element value="YokoLinkChecker"/>
             </property>
         </properties>
+    </rule>
+
+    <!-- Define custom capabilities -->
+    <rule ref="WordPress.WP.Capabilities">
+        <properties>
+            <property name="custom_capabilities" type="array">
+                <element value="yoko_lc_view_results"/>
+                <element value="yoko_lc_manage_scans"/>
+                <element value="yoko_lc_manage_settings"/>
+            </property>
+        </properties>
+    </rule>
+
+    <!-- Allow error_log for debugging (can be removed in production) -->
+    <rule ref="WordPress.PHP.DevelopmentFunctions.error_log_error_log">
+        <severity>0</severity>
+    </rule>
+    <rule ref="WordPress.PHP.DevelopmentFunctions.error_log_var_export">
+        <severity>0</severity>
     </rule>
 
     <rule ref="WordPress.WP.I18n">

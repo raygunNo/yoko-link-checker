@@ -27,7 +27,7 @@ class ScanOrchestrator {
 	/**
 	 * Cron hook name for scheduled scans.
 	 */
-	public const CRON_HOOK = 'ylc_process_scan_batch';
+	public const CRON_HOOK = 'yoko_lc_process_scan_batch';
 
 	/**
 	 * Batch processor instance.
@@ -126,7 +126,7 @@ class ScanOrchestrator {
 		 * @param int    $scan_id Scan ID.
 		 * @param string $type    Scan type.
 		 */
-		do_action( 'ylc_scan_started', $scan_id, $type );
+		do_action( 'yoko_lc_scan_started', $scan_id, $type );
 
 		// Schedule first batch.
 		$this->schedule_next_batch( $scan_id );
@@ -165,7 +165,15 @@ class ScanOrchestrator {
 		if ( Scan::PHASE_DISCOVERY === $scan->current_phase ) {
 			error_log( '[YLC Debug] Calling process_discovery_phase' );
 			$state = $this->process_discovery_phase( $scan );
-			error_log( '[YLC Debug] Discovery phase result: ' . ( $state ? wp_json_encode( [ 'total' => $state->total, 'processed' => $state->processed, 'complete' => $state->complete ] ) : 'null' ) );
+			error_log(
+				'[YLC Debug] Discovery phase result: ' . ( $state ? wp_json_encode(
+					array(
+						'total'     => $state->total,
+						'processed' => $state->processed,
+						'complete'  => $state->complete,
+					)
+				) : 'null' )
+			);
 		} elseif ( Scan::PHASE_CHECKING === $scan->current_phase ) {
 			error_log( '[YLC Debug] Calling process_checking_phase' );
 			$state = $this->process_checking_phase( $scan );
@@ -199,7 +207,7 @@ class ScanOrchestrator {
 		 * @since 1.0.0
 		 * @param int $batch_size Default batch size.
 		 */
-		$batch_size = apply_filters( 'ylc_discovery_batch_size', 50 );
+		$batch_size = apply_filters( 'yoko_lc_discovery_batch_size', 50 );
 
 		// Get cursor from scan metadata.
 		$cursor = $this->get_scan_cursor( $scan->id, 'discovery' );
@@ -232,7 +240,7 @@ class ScanOrchestrator {
 		 * @since 1.0.0
 		 * @param int $batch_size Default batch size.
 		 */
-		$batch_size = apply_filters( 'ylc_checking_batch_size', 5 );
+		$batch_size = apply_filters( 'yoko_lc_checking_batch_size', 5 );
 
 		// Get cursor from scan metadata.
 		$cursor = $this->get_scan_cursor( $scan->id, 'checking' );
@@ -305,7 +313,7 @@ class ScanOrchestrator {
 		 * @param int $scan_id   Scan ID.
 		 * @param int $total_urls Total URLs to check.
 		 */
-		do_action( 'ylc_scan_phase_checking', $scan_id, $total_urls );
+		do_action( 'yoko_lc_scan_phase_checking', $scan_id, $total_urls );
 
 		// Schedule next batch.
 		$this->schedule_next_batch( $scan_id );
@@ -326,8 +334,8 @@ class ScanOrchestrator {
 		$this->scan_repository->complete( $scan );
 
 		// Clean up cursors.
-		delete_option( "ylc_scan_{$scan_id}_cursor_discovery" );
-		delete_option( "ylc_scan_{$scan_id}_cursor_checking" );
+		delete_option( "yoko_lc_scan_{$scan_id}_cursor_discovery" );
+		delete_option( "yoko_lc_scan_{$scan_id}_cursor_checking" );
 
 		/**
 		 * Fires when a scan completes.
@@ -335,7 +343,7 @@ class ScanOrchestrator {
 		 * @since 1.0.0
 		 * @param int $scan_id Scan ID.
 		 */
-		do_action( 'ylc_scan_completed', $scan_id );
+		do_action( 'yoko_lc_scan_completed', $scan_id );
 
 		// Schedule next automatic scan if enabled.
 		$this->maybe_schedule_next_scan();
@@ -358,7 +366,7 @@ class ScanOrchestrator {
 		$this->scan_repository->pause( $scan );
 
 		// Clear scheduled batch.
-		wp_clear_scheduled_hook( self::CRON_HOOK, [ $scan_id ] );
+		wp_clear_scheduled_hook( self::CRON_HOOK, array( $scan_id ) );
 
 		/**
 		 * Fires when a scan is paused.
@@ -366,7 +374,7 @@ class ScanOrchestrator {
 		 * @since 1.0.0
 		 * @param int $scan_id Scan ID.
 		 */
-		do_action( 'ylc_scan_paused', $scan_id );
+		do_action( 'yoko_lc_scan_paused', $scan_id );
 
 		return true;
 	}
@@ -394,7 +402,7 @@ class ScanOrchestrator {
 		 * @since 1.0.0
 		 * @param int $scan_id Scan ID.
 		 */
-		do_action( 'ylc_scan_resumed', $scan_id );
+		do_action( 'yoko_lc_scan_resumed', $scan_id );
 
 		return true;
 	}
@@ -420,11 +428,11 @@ class ScanOrchestrator {
 		$this->scan_repository->cancel( $scan_id );
 
 		// Clear scheduled batch.
-		wp_clear_scheduled_hook( self::CRON_HOOK, [ $scan_id ] );
+		wp_clear_scheduled_hook( self::CRON_HOOK, array( $scan_id ) );
 
 		// Clean up cursors.
-		delete_option( "ylc_scan_{$scan_id}_cursor_discovery" );
-		delete_option( "ylc_scan_{$scan_id}_cursor_checking" );
+		delete_option( "yoko_lc_scan_{$scan_id}_cursor_discovery" );
+		delete_option( "yoko_lc_scan_{$scan_id}_cursor_checking" );
 
 		/**
 		 * Fires when a scan is cancelled.
@@ -432,7 +440,7 @@ class ScanOrchestrator {
 		 * @since 1.0.0
 		 * @param int $scan_id Scan ID.
 		 */
-		do_action( 'ylc_scan_cancelled', $scan_id );
+		do_action( 'yoko_lc_scan_cancelled', $scan_id );
 
 		return true;
 	}
@@ -451,13 +459,13 @@ class ScanOrchestrator {
 		 * @since 1.0.0
 		 * @param int $delay Default delay.
 		 */
-		$delay = apply_filters( 'ylc_batch_delay', 1 );
+		$delay = apply_filters( 'yoko_lc_batch_delay', 1 );
 
-		if ( ! wp_next_scheduled( self::CRON_HOOK, [ $scan_id ] ) ) {
+		if ( ! wp_next_scheduled( self::CRON_HOOK, array( $scan_id ) ) ) {
 			wp_schedule_single_event(
 				time() + $delay,
 				self::CRON_HOOK,
-				[ $scan_id ]
+				array( $scan_id )
 			);
 		}
 	}
@@ -469,14 +477,14 @@ class ScanOrchestrator {
 	 * @return void
 	 */
 	private function maybe_schedule_next_scan(): void {
-		$auto_scan = get_option( 'ylc_auto_scan_enabled', false );
+		$auto_scan = get_option( 'yoko_lc_auto_scan_enabled', false );
 
 		if ( ! $auto_scan ) {
 			return;
 		}
 
-		$frequency = get_option( 'ylc_auto_scan_frequency', 'weekly' );
-		$hook      = 'ylc_auto_scan';
+		$frequency = get_option( 'yoko_lc_auto_scan_frequency', 'weekly' );
+		$hook      = 'yoko_lc_auto_scan';
 
 		// Clear existing.
 		wp_clear_scheduled_hook( $hook );
@@ -493,12 +501,12 @@ class ScanOrchestrator {
 	 * @return int Seconds.
 	 */
 	private function get_frequency_seconds( string $frequency ): int {
-		$schedules = [
+		$schedules = array(
 			'hourly'     => HOUR_IN_SECONDS,
 			'twicedaily' => 12 * HOUR_IN_SECONDS,
 			'daily'      => DAY_IN_SECONDS,
 			'weekly'     => WEEK_IN_SECONDS,
-		];
+		);
 
 		return $schedules[ $frequency ] ?? WEEK_IN_SECONDS;
 	}
@@ -512,7 +520,7 @@ class ScanOrchestrator {
 	 * @return int Cursor value.
 	 */
 	private function get_scan_cursor( int $scan_id, string $phase ): int {
-		return (int) get_option( "ylc_scan_{$scan_id}_cursor_{$phase}", 0 );
+		return (int) get_option( "yoko_lc_scan_{$scan_id}_cursor_{$phase}", 0 );
 	}
 
 	/**
@@ -525,7 +533,7 @@ class ScanOrchestrator {
 	 * @return void
 	 */
 	private function set_scan_cursor( int $scan_id, string $phase, int $cursor ): void {
-		update_option( "ylc_scan_{$scan_id}_cursor_{$phase}", $cursor, false );
+		update_option( "yoko_lc_scan_{$scan_id}_cursor_{$phase}", $cursor, false );
 	}
 
 	/**
@@ -538,7 +546,7 @@ class ScanOrchestrator {
 	 * @return void
 	 */
 	private function log_progress( int $scan_id, ScanState $state, float $batch_time ): void {
-		if ( ! defined( 'YLC_DEBUG' ) || ! YLC_DEBUG ) {
+		if ( ! defined( 'YOKO_LC_DEBUG' ) || ! YOKO_LC_DEBUG ) {
 			return;
 		}
 
@@ -591,7 +599,7 @@ class ScanOrchestrator {
 			$progress = 100.0;
 		}
 
-		return [
+		return array(
 			'scan_id'      => $scan->id,
 			'status'       => $scan->status,
 			'phase'        => $scan->current_phase,
@@ -602,6 +610,6 @@ class ScanOrchestrator {
 			'urls_checked' => $scan->checked_urls,
 			'started_at'   => $scan->started_at,
 			'completed_at' => $scan->completed_at,
-		];
+		);
 	}
 }

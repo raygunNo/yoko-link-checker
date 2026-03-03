@@ -86,14 +86,14 @@ final class CheckResult {
 	 * Constructor.
 	 *
 	 * @since 1.0.0
-	 * @param string      $url            The checked URL.
-	 * @param string      $status         Classified status.
-	 * @param int|null    $http_code      HTTP status code.
-	 * @param string|null $final_url      Final URL after redirects.
-	 * @param int         $redirect_count Number of redirects.
-	 * @param int|null    $response_time  Response time in ms.
-	 * @param string|null $error_type     Error type identifier.
-	 * @param string|null $error_message  Error message.
+	 * @param string                $url            The checked URL.
+	 * @param string                $status         Classified status.
+	 * @param int|null              $http_code      HTTP status code.
+	 * @param string|null           $final_url      Final URL after redirects.
+	 * @param int                   $redirect_count Number of redirects.
+	 * @param int|null              $response_time  Response time in ms.
+	 * @param string|null           $error_type     Error type identifier.
+	 * @param string|null           $error_message  Error message.
 	 * @param array<string, string> $headers Response headers.
 	 */
 	public function __construct(
@@ -122,11 +122,11 @@ final class CheckResult {
 	 * Create a success result.
 	 *
 	 * @since 1.0.0
-	 * @param string      $url           Checked URL.
-	 * @param int         $http_code     HTTP code.
-	 * @param string|null $final_url     Final URL.
-	 * @param int         $redirect_count Redirects.
-	 * @param int         $response_time Response time.
+	 * @param string                $url           Checked URL.
+	 * @param int                   $http_code     HTTP code.
+	 * @param string|null           $final_url     Final URL.
+	 * @param int                   $redirect_count Redirects.
+	 * @param int                   $response_time Response time.
 	 * @param array<string, string> $headers Headers.
 	 * @return self
 	 */
@@ -162,12 +162,12 @@ final class CheckResult {
 	 * Create an error result.
 	 *
 	 * @since 1.0.0
-	 * @param string      $url           Checked URL.
-	 * @param string      $status        Status classification.
-	 * @param string      $error_type    Error type.
-	 * @param string      $error_message Error message.
-	 * @param int|null    $http_code     HTTP code if applicable.
-	 * @param int|null    $response_time Response time.
+	 * @param string   $url           Checked URL.
+	 * @param string   $status        Status classification.
+	 * @param string   $error_type    Error type.
+	 * @param string   $error_message Error message.
+	 * @param int|null $http_code     HTTP code if applicable.
+	 * @param int|null $response_time Response time.
 	 * @return self
 	 */
 	public static function error(

@@ -65,6 +65,16 @@ final class HttpClient {
 	 */
 	private int $connect_timeout;
 
+	/**
+	 * Constructor.
+	 *
+	 * @since 1.0.0
+	 * @param int    $timeout         Request timeout in seconds.
+	 * @param int    $max_redirects   Maximum number of redirects to follow.
+	 * @param string $user_agent      User agent string.
+	 * @param bool   $verify_ssl      Whether to verify SSL certificates.
+	 * @param int    $connect_timeout Connection timeout in seconds.
+	 */
 	public function __construct(
 		int $timeout = 8,
 		int $max_redirects = 3,
@@ -74,9 +84,9 @@ final class HttpClient {
 	) {
 		$this->timeout         = $timeout;
 		$this->connect_timeout = $connect_timeout;
-		$this->max_redirects = $max_redirects;
-		$this->user_agent    = $user_agent ?: $this->get_default_user_agent();
-		$this->verify_ssl    = $verify_ssl;
+		$this->max_redirects   = $max_redirects;
+		$this->user_agent      = $user_agent ? $user_agent : $this->get_default_user_agent();
+		$this->verify_ssl      = $verify_ssl;
 	}
 
 	/**
@@ -152,7 +162,7 @@ final class HttpClient {
 		 * @since 1.0.0
 		 * @param array $args Request arguments.
 		 */
-		return apply_filters( 'ylc_http_request_args', $args );
+		return apply_filters( 'yoko_lc_http_request_args', $args );
 	}
 
 	/**
@@ -162,7 +172,7 @@ final class HttpClient {
 	 * @return string
 	 */
 	private function get_default_user_agent(): string {
-		$version = defined( 'YLC_VERSION' ) ? YLC_VERSION : '1.0.0';
+		$version = defined( 'YOKO_LC_VERSION' ) ? YOKO_LC_VERSION : '1.0.0';
 		return "YokoLinkChecker/{$version} (WordPress Link Checker; +https://example.com)";
 	}
 
@@ -301,6 +311,6 @@ final class HttpClient {
 			}
 		}
 
-		return $code ?: 'unknown_error';
+		return $code ? $code : 'unknown_error';
 	}
 }

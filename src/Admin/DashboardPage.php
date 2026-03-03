@@ -70,12 +70,12 @@ class DashboardPage {
 	 * @return void
 	 */
 	public function render(): void {
-		$stats           = $this->get_stats();
-		$scan_status     = $this->scan_orchestrator->get_status();
-		$recent_broken   = $this->get_recent_broken();
+		$stats            = $this->get_stats();
+		$scan_status      = $this->scan_orchestrator->get_status();
+		$recent_broken    = $this->get_recent_broken();
 		$status_breakdown = $this->get_status_breakdown();
 
-		include YLC_PLUGIN_DIR . 'templates/admin/dashboard.php';
+		include YOKO_LC_PLUGIN_DIR . 'templates/admin/dashboard.php';
 	}
 
 	/**
@@ -85,19 +85,19 @@ class DashboardPage {
 	 * @return array
 	 */
 	private function get_stats(): array {
-		return [
-			'total_urls'   => $this->url_repository->count(),
-			'broken'       => $this->url_repository->count( Url::STATUS_BROKEN ),
-			'warnings'     => $this->url_repository->count( Url::STATUS_WARNING ),
-			'redirects'    => $this->url_repository->count( Url::STATUS_REDIRECT ),
-			'valid'        => $this->url_repository->count( Url::STATUS_VALID ),
-			'pending'      => $this->url_repository->count( Url::STATUS_PENDING ),
-			'blocked'      => $this->url_repository->count( Url::STATUS_BLOCKED ),
-			'timeouts'     => $this->url_repository->count( Url::STATUS_TIMEOUT ),
-			'errors'       => $this->url_repository->count( Url::STATUS_ERROR ),
-			'total_scans'  => count( $this->scan_repository->get_recent( 100 ) ),
-			'last_scan'    => $this->get_last_completed_scan(),
-		];
+		return array(
+			'total_urls'  => $this->url_repository->count(),
+			'broken'      => $this->url_repository->count( Url::STATUS_BROKEN ),
+			'warnings'    => $this->url_repository->count( Url::STATUS_WARNING ),
+			'redirects'   => $this->url_repository->count( Url::STATUS_REDIRECT ),
+			'valid'       => $this->url_repository->count( Url::STATUS_VALID ),
+			'pending'     => $this->url_repository->count( Url::STATUS_PENDING ),
+			'blocked'     => $this->url_repository->count( Url::STATUS_BLOCKED ),
+			'timeouts'    => $this->url_repository->count( Url::STATUS_TIMEOUT ),
+			'errors'      => $this->url_repository->count( Url::STATUS_ERROR ),
+			'total_scans' => count( $this->scan_repository->get_recent( 100 ) ),
+			'last_scan'   => $this->get_last_completed_scan(),
+		);
 	}
 
 	/**
@@ -107,48 +107,48 @@ class DashboardPage {
 	 * @return array
 	 */
 	private function get_status_breakdown(): array {
-		$statuses = [
-			Url::STATUS_VALID    => [
+		$statuses = array(
+			Url::STATUS_VALID    => array(
 				'label' => __( 'Valid', 'yoko-link-checker' ),
 				'color' => '#4caf50',
-			],
-			Url::STATUS_BROKEN   => [
+			),
+			Url::STATUS_BROKEN   => array(
 				'label' => __( 'Broken', 'yoko-link-checker' ),
 				'color' => '#f44336',
-			],
-			Url::STATUS_WARNING  => [
+			),
+			Url::STATUS_WARNING  => array(
 				'label' => __( 'Warning', 'yoko-link-checker' ),
 				'color' => '#ff9800',
-			],
-			Url::STATUS_REDIRECT => [
+			),
+			Url::STATUS_REDIRECT => array(
 				'label' => __( 'Redirect', 'yoko-link-checker' ),
 				'color' => '#2196f3',
-			],
-			Url::STATUS_BLOCKED  => [
+			),
+			Url::STATUS_BLOCKED  => array(
 				'label' => __( 'Blocked', 'yoko-link-checker' ),
 				'color' => '#9c27b0',
-			],
-			Url::STATUS_TIMEOUT  => [
+			),
+			Url::STATUS_TIMEOUT  => array(
 				'label' => __( 'Timeout', 'yoko-link-checker' ),
 				'color' => '#795548',
-			],
-			Url::STATUS_PENDING  => [
+			),
+			Url::STATUS_PENDING  => array(
 				'label' => __( 'Pending', 'yoko-link-checker' ),
 				'color' => '#9e9e9e',
-			],
-		];
+			),
+		);
 
-		$breakdown = [];
+		$breakdown = array();
 
 		foreach ( $statuses as $status => $config ) {
 			$count = $this->url_repository->count( $status );
 			if ( $count > 0 ) {
-				$breakdown[] = [
+				$breakdown[] = array(
 					'status' => $status,
 					'label'  => $config['label'],
 					'count'  => $count,
 					'color'  => $config['color'],
-				];
+				);
 			}
 		}
 
@@ -164,7 +164,7 @@ class DashboardPage {
 	private function get_last_completed_scan() {
 		$recent = $this->scan_repository->get_recent( 10 );
 		foreach ( $recent as $scan ) {
-			if ( $scan->status === \YokoLinkChecker\Model\Scan::STATUS_COMPLETED ) {
+			if ( \YokoLinkChecker\Model\Scan::STATUS_COMPLETED === $scan->status ) {
 				return $scan;
 			}
 		}
@@ -180,10 +180,11 @@ class DashboardPage {
 	private function get_recent_broken(): array {
 		global $wpdb;
 
-		$urls_table  = $wpdb->prefix . 'ylc_urls';
-		$links_table = $wpdb->prefix . 'ylc_links';
+		$urls_table  = $wpdb->prefix . 'yoko_lc_urls';
+		$links_table = $wpdb->prefix . 'yoko_lc_links';
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names are safe.
 		$results = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT u.id, u.url, u.http_code, u.error_message, u.last_checked,
@@ -196,20 +197,21 @@ class DashboardPage {
 				Url::STATUS_BROKEN
 			)
 		);
+		// phpcs:enable
 
-		$broken = [];
+		$broken = array();
 
 		foreach ( $results as $row ) {
 			$post_title = '';
 			$source_id  = $row->source_id ? (int) $row->source_id : 0;
 
 			// Only get post title for post source types.
-			if ( $source_id && in_array( $row->source_type, [ 'post', 'page' ], true ) ) {
+			if ( $source_id && in_array( $row->source_type, array( 'post', 'page' ), true ) ) {
 				$post       = get_post( $source_id );
 				$post_title = $post ? $post->post_title : '';
 			}
 
-			$broken[] = [
+			$broken[] = array(
 				'id'            => (int) $row->id,
 				'url'           => $row->url,
 				'http_code'     => (int) $row->http_code,
@@ -219,7 +221,7 @@ class DashboardPage {
 				'source_type'   => $row->source_type ?? '',
 				'post_title'    => $post_title,
 				'anchor_text'   => $row->anchor_text,
-			];
+			);
 		}
 
 		return $broken;
@@ -242,6 +244,7 @@ class DashboardPage {
 		return sprintf(
 			/* translators: %s: human-readable time difference */
 			__( '%s ago', 'yoko-link-checker' ),
+			// phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested -- Used for local time comparison.
 			human_time_diff( $timestamp, current_time( 'timestamp' ) )
 		);
 	}

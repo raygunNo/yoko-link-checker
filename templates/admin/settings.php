@@ -11,16 +11,16 @@
 defined( 'ABSPATH' ) || exit;
 
 // Get all public post types.
-$post_types = get_post_types( [ 'public' => true ], 'objects' );
+$yoko_lc_post_types = get_post_types( array( 'public' => true ), 'objects' );
 ?>
 
 <div class="wrap ylc-settings">
 	<h1><?php esc_html_e( 'Link Checker Settings', 'yoko-link-checker' ); ?></h1>
 
-	<?php settings_errors( 'ylc_settings' ); ?>
+	<?php settings_errors( 'yoko_lc_settings' ); ?>
 
 	<form method="post" action="">
-		<?php wp_nonce_field( 'ylc_settings', 'ylc_settings_nonce' ); ?>
+		<?php wp_nonce_field( 'yoko_lc_settings', 'yoko_lc_settings_nonce' ); ?>
 
 		<table class="form-table" role="presentation">
 			<tbody>
@@ -31,13 +31,13 @@ $post_types = get_post_types( [ 'public' => true ], 'objects' );
 					</th>
 					<td>
 						<fieldset>
-							<?php foreach ( $post_types as $post_type ) : ?>
+							<?php foreach ( $yoko_lc_post_types as $yoko_lc_post_type ) : ?>
 								<label>
 									<input type="checkbox" 
-									       name="ylc_post_types[]" 
-									       value="<?php echo esc_attr( $post_type->name ); ?>"
-									       <?php checked( in_array( $post_type->name, $settings['post_types'], true ) ); ?>>
-									<?php echo esc_html( $post_type->labels->name ); ?>
+											name="yoko_lc_post_types[]" 
+											value="<?php echo esc_attr( $yoko_lc_post_type->name ); ?>"
+											<?php checked( in_array( $yoko_lc_post_type->name, $settings['post_types'], true ) ); ?>>
+									<?php echo esc_html( $yoko_lc_post_type->labels->name ); ?>
 								</label><br>
 							<?php endforeach; ?>
 							<p class="description">
@@ -50,17 +50,17 @@ $post_types = get_post_types( [ 'public' => true ], 'objects' );
 				<!-- Check Timeout -->
 				<tr>
 					<th scope="row">
-						<label for="ylc_check_timeout"><?php esc_html_e( 'Request Timeout', 'yoko-link-checker' ); ?></label>
+						<label for="yoko_lc_check_timeout"><?php esc_html_e( 'Request Timeout', 'yoko-link-checker' ); ?></label>
 					</th>
 					<td>
 						<input type="number" 
-						       id="ylc_check_timeout" 
-						       name="ylc_check_timeout" 
-						       value="<?php echo esc_attr( $settings['check_timeout'] ); ?>"
-						       min="5" 
-						       max="120" 
-						       step="1"
-						       class="small-text">
+								id="yoko_lc_check_timeout" 
+								name="yoko_lc_check_timeout" 
+								value="<?php echo esc_attr( $settings['check_timeout'] ); ?>"
+								min="5" 
+								max="120" 
+								step="1"
+								class="small-text">
 						<span><?php esc_html_e( 'seconds', 'yoko-link-checker' ); ?></span>
 						<p class="description">
 							<?php esc_html_e( 'How long to wait for a response when checking URLs. Increase if you get many timeout errors.', 'yoko-link-checker' ); ?>
@@ -71,15 +71,15 @@ $post_types = get_post_types( [ 'public' => true ], 'objects' );
 				<!-- Auto Scan -->
 				<tr>
 					<th scope="row">
-						<label for="ylc_auto_scan_enabled"><?php esc_html_e( 'Automatic Scanning', 'yoko-link-checker' ); ?></label>
+						<label for="yoko_lc_auto_scan_enabled"><?php esc_html_e( 'Automatic Scanning', 'yoko-link-checker' ); ?></label>
 					</th>
 					<td>
 						<label>
 							<input type="checkbox" 
-							       id="ylc_auto_scan_enabled" 
-							       name="ylc_auto_scan_enabled" 
-							       value="1"
-							       <?php checked( $settings['auto_scan_enabled'] ); ?>>
+									id="yoko_lc_auto_scan_enabled" 
+									name="yoko_lc_auto_scan_enabled" 
+									value="1"
+									<?php checked( $settings['auto_scan_enabled'] ); ?>>
 							<?php esc_html_e( 'Enable automatic scheduled scans', 'yoko-link-checker' ); ?>
 						</label>
 					</td>
@@ -88,10 +88,10 @@ $post_types = get_post_types( [ 'public' => true ], 'objects' );
 				<!-- Scan Frequency -->
 				<tr class="ylc-auto-scan-option" <?php echo ! $settings['auto_scan_enabled'] ? 'style="display:none;"' : ''; ?>>
 					<th scope="row">
-						<label for="ylc_auto_scan_frequency"><?php esc_html_e( 'Scan Frequency', 'yoko-link-checker' ); ?></label>
+						<label for="yoko_lc_auto_scan_frequency"><?php esc_html_e( 'Scan Frequency', 'yoko-link-checker' ); ?></label>
 					</th>
 					<td>
-						<select id="ylc_auto_scan_frequency" name="ylc_auto_scan_frequency">
+						<select id="yoko_lc_auto_scan_frequency" name="yoko_lc_auto_scan_frequency">
 							<option value="hourly" <?php selected( $settings['auto_scan_frequency'], 'hourly' ); ?>>
 								<?php esc_html_e( 'Hourly', 'yoko-link-checker' ); ?>
 							</option>
@@ -144,7 +144,7 @@ $post_types = get_post_types( [ 'public' => true ], 'objects' );
 <script>
 jQuery(document).ready(function($) {
 	// Toggle auto-scan options.
-	$('#ylc_auto_scan_enabled').on('change', function() {
+	$('#yoko_lc_auto_scan_enabled').on('change', function() {
 		$('.ylc-auto-scan-option').toggle(this.checked);
 	});
 });

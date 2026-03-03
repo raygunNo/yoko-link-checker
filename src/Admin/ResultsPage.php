@@ -65,7 +65,7 @@ class ResultsPage {
 		$this->list_table->set_filter( $status_filter );
 		$this->list_table->prepare_items();
 
-		include YLC_PLUGIN_DIR . 'templates/admin/results.php';
+		include YOKO_LC_PLUGIN_DIR . 'templates/admin/results.php';
 	}
 
 	/**
@@ -90,11 +90,11 @@ class ResultsPage {
 		$link_id = absint( $_GET['link_id'] );
 		$nonce   = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
 
-		if ( ! wp_verify_nonce( $nonce, "ylc_action_{$link_id}" ) ) {
+		if ( ! wp_verify_nonce( $nonce, "yoko_lc_action_{$link_id}" ) ) {
 			wp_die( esc_html__( 'Security check failed.', 'yoko-link-checker' ) );
 		}
 
-		if ( ! current_user_can( 'ylc_manage_scans' ) ) {
+		if ( ! current_user_can( 'yoko_lc_manage_scans' ) ) {
 			wp_die( esc_html__( 'Permission denied.', 'yoko-link-checker' ) );
 		}
 
@@ -109,7 +109,7 @@ class ResultsPage {
 		}
 
 		// Redirect to remove action from URL.
-		$redirect_url = remove_query_arg( [ 'action', 'link_id', '_wpnonce' ] );
+		$redirect_url = remove_query_arg( array( 'action', 'link_id', '_wpnonce' ) );
 		wp_safe_redirect( $redirect_url );
 		exit;
 	}
@@ -121,7 +121,7 @@ class ResultsPage {
 	 * @return string
 	 */
 	private function get_status_filter(): string {
-		$valid_statuses = [
+		$valid_statuses = array(
 			'all',
 			Url::STATUS_BROKEN,
 			Url::STATUS_WARNING,
@@ -130,8 +130,9 @@ class ResultsPage {
 			Url::STATUS_TIMEOUT,
 			Url::STATUS_PENDING,
 			Url::STATUS_VALID,
-		];
+		);
 
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Filter parameter doesn't require nonce.
 		$status = isset( $_GET['status'] ) ? sanitize_key( $_GET['status'] ) : 'broken';
 
 		return in_array( $status, $valid_statuses, true ) ? $status : 'broken';
@@ -144,7 +145,7 @@ class ResultsPage {
 	 * @return array
 	 */
 	private function get_filters(): array {
-		return [
+		return array(
 			'all'      => __( 'All', 'yoko-link-checker' ),
 			'broken'   => __( 'Broken', 'yoko-link-checker' ),
 			'warning'  => __( 'Warning', 'yoko-link-checker' ),
@@ -153,7 +154,7 @@ class ResultsPage {
 			'timeout'  => __( 'Timeout', 'yoko-link-checker' ),
 			'pending'  => __( 'Pending', 'yoko-link-checker' ),
 			'valid'    => __( 'Valid', 'yoko-link-checker' ),
-		];
+		);
 	}
 
 	/**
@@ -166,7 +167,7 @@ class ResultsPage {
 	private function ignore_link( int $link_id ): void {
 		$this->link_repository->update(
 			$link_id,
-			[ 'ignored' => 1 ]
+			array( 'ignored' => 1 )
 		);
 
 		/**
@@ -175,7 +176,7 @@ class ResultsPage {
 		 * @since 1.0.0
 		 * @param int $link_id Link ID.
 		 */
-		do_action( 'ylc_link_ignored', $link_id );
+		do_action( 'yoko_lc_link_ignored', $link_id );
 	}
 
 	/**
@@ -188,7 +189,7 @@ class ResultsPage {
 	private function unignore_link( int $link_id ): void {
 		$this->link_repository->update(
 			$link_id,
-			[ 'ignored' => 0 ]
+			array( 'ignored' => 0 )
 		);
 
 		/**
@@ -197,7 +198,7 @@ class ResultsPage {
 		 * @since 1.0.0
 		 * @param int $link_id Link ID.
 		 */
-		do_action( 'ylc_link_unignored', $link_id );
+		do_action( 'yoko_lc_link_unignored', $link_id );
 	}
 
 	/**

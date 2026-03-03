@@ -12,8 +12,8 @@
 
 defined( 'ABSPATH' ) || exit;
 
-$list_table = $this->get_list_table();
-$current_url = admin_url( 'admin.php?page=yoko-link-checker-results' );
+$yoko_lc_list_table  = $this->get_list_table();
+$yoko_lc_current_url = admin_url( 'admin.php?page=yoko-link-checker-results' );
 ?>
 
 <div class="wrap ylc-results">
@@ -24,20 +24,20 @@ $current_url = admin_url( 'admin.php?page=yoko-link-checker-results' );
 	<!-- Status Filter Tabs -->
 	<ul class="subsubsub">
 		<?php
-		$filter_links = [];
-		foreach ( $filters as $status => $label ) {
-			$url   = add_query_arg( 'status', $status, $current_url );
-			$class = ( $status_filter === $status ) ? 'current' : '';
-			
-			$filter_links[] = sprintf(
+		$yoko_lc_filter_links = array();
+		foreach ( $filters as $yoko_lc_status => $yoko_lc_label ) {
+			$yoko_lc_url   = add_query_arg( 'status', $yoko_lc_status, $yoko_lc_current_url );
+			$yoko_lc_class = ( $status_filter === $yoko_lc_status ) ? 'current' : '';
+
+			$yoko_lc_yoko_lc_filter_links[] = sprintf(
 				'<li class="ylc-filter-%s"><a href="%s" class="%s">%s</a></li>',
-				esc_attr( $status ),
-				esc_url( $url ),
-				esc_attr( $class ),
-				esc_html( $label )
+				esc_attr( $yoko_lc_status ),
+				esc_url( $yoko_lc_url ),
+				esc_attr( $yoko_lc_class ),
+				esc_html( $yoko_lc_label )
 			);
 		}
-		echo implode( ' | ', $filter_links ); // phpcs:ignore WordPress.Security.EscapeOutput
+		echo implode( ' | ', $yoko_lc_filter_links ); // phpcs:ignore WordPress.Security.EscapeOutput
 		?>
 	</ul>
 
@@ -46,8 +46,8 @@ $current_url = admin_url( 'admin.php?page=yoko-link-checker-results' );
 		<input type="hidden" name="status" value="<?php echo esc_attr( $status_filter ); ?>">
 		
 		<?php
-		$list_table->search_box( __( 'Search URLs', 'yoko-link-checker' ), 'ylc-search' );
-		$list_table->display();
+		$yoko_lc_list_table->search_box( __( 'Search URLs', 'yoko-link-checker' ), 'ylc-search' );
+		$yoko_lc_list_table->display();
 		?>
 	</form>
 </div>

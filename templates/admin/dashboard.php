@@ -14,7 +14,7 @@
 
 defined( 'ABSPATH' ) || exit;
 
-$is_scanning = $scan_status && 'running' === $scan_status['status'];
+$yoko_lc_is_scanning = $scan_status && 'running' === $scan_status['status'];
 ?>
 
 <div class="wrap ylc-dashboard">
@@ -25,7 +25,7 @@ $is_scanning = $scan_status && 'running' === $scan_status['status'];
 		<h2><?php esc_html_e( 'Scan', 'yoko-link-checker' ); ?></h2>
 		
 		<div class="ylc-scan-status" id="ylc-scan-status">
-			<?php if ( $is_scanning ) : ?>
+			<?php if ( $yoko_lc_is_scanning ) : ?>
 				<div class="ylc-scanning">
 					<span class="spinner is-active"></span>
 					<span class="ylc-scan-phase">
@@ -54,7 +54,7 @@ $is_scanning = $scan_status && 'running' === $scan_status['status'];
 		</div>
 
 		<div class="ylc-scan-actions">
-			<?php if ( $is_scanning ) : ?>
+			<?php if ( $yoko_lc_is_scanning ) : ?>
 				<button type="button" class="button ylc-pause-scan" data-scan-id="<?php echo esc_attr( $scan_status['scan_id'] ); ?>">
 					<?php esc_html_e( 'Pause', 'yoko-link-checker' ); ?>
 				</button>
@@ -139,20 +139,20 @@ $is_scanning = $scan_status && 'running' === $scan_status['status'];
 				</tr>
 			</thead>
 			<tbody>
-				<?php foreach ( $recent_broken as $link ) : ?>
+				<?php foreach ( $recent_broken as $yoko_lc_link ) : ?>
 				<tr>
 					<td>
-						<a href="<?php echo esc_url( $link['url'] ); ?>" target="_blank" rel="noopener noreferrer" title="<?php echo esc_attr( $link['url'] ); ?>">
-							<?php echo esc_html( wp_trim_words( $link['url'], 8, '...' ) ); ?>
+						<a href="<?php echo esc_url( $yoko_lc_link['url'] ); ?>" target="_blank" rel="noopener noreferrer" title="<?php echo esc_attr( $yoko_lc_link['url'] ); ?>">
+							<?php echo esc_html( wp_trim_words( $yoko_lc_link['url'], 8, '...' ) ); ?>
 						</a>
 					</td>
 					<td>
-						<span class="ylc-code ylc-code-client-error"><?php echo esc_html( $link['http_code'] ?: '—' ); ?></span>
+						<span class="ylc-code ylc-code-client-error"><?php echo esc_html( $yoko_lc_link['http_code'] ? $yoko_lc_link['http_code'] : '—' ); ?></span>
 					</td>
 					<td>
-						<?php if ( $link['source_id'] && $link['post_title'] ) : ?>
-							<a href="<?php echo esc_url( get_edit_post_link( $link['source_id'] ) ); ?>">
-								<?php echo esc_html( wp_trim_words( $link['post_title'], 5, '...' ) ); ?>
+						<?php if ( $yoko_lc_link['source_id'] && $yoko_lc_link['post_title'] ) : ?>
+							<a href="<?php echo esc_url( get_edit_post_link( $yoko_lc_link['source_id'] ) ); ?>">
+								<?php echo esc_html( wp_trim_words( $yoko_lc_link['post_title'], 5, '...' ) ); ?>
 							</a>
 						<?php else : ?>
 							—
@@ -160,8 +160,8 @@ $is_scanning = $scan_status && 'running' === $scan_status['status'];
 					</td>
 					<td>
 						<?php
-						if ( $link['last_checked'] ) {
-							echo esc_html( human_time_diff( strtotime( $link['last_checked'] ) ) . ' ' . __( 'ago', 'yoko-link-checker' ) );
+						if ( $yoko_lc_link['last_checked'] ) {
+							echo esc_html( human_time_diff( strtotime( $yoko_lc_link['last_checked'] ) ) . ' ' . __( 'ago', 'yoko-link-checker' ) );
 						} else {
 							esc_html_e( 'Never', 'yoko-link-checker' );
 						}

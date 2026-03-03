@@ -3,7 +3,7 @@
  * Scan entity model.
  *
  * Represents a scan run and its state.
- * Maps to the ylc_scans database table.
+ * Maps to the yoko_lc_scans database table.
  *
  * @package YokoLinkChecker
  * @since   1.0.0

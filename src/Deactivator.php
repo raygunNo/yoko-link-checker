@@ -43,10 +43,10 @@ final class Deactivator {
 	 */
 	private static function clear_scheduled_events(): void {
 		// Clear any pending scan batch events.
-		wp_clear_scheduled_hook( 'ylc_process_scan_batch' );
+		wp_clear_scheduled_hook( 'yoko_lc_process_scan_batch' );
 
 		// Clear any scheduled rescans.
-		wp_clear_scheduled_hook( 'ylc_scheduled_scan' );
+		wp_clear_scheduled_hook( 'yoko_lc_scheduled_scan' );
 	}
 
 	/**
@@ -61,7 +61,7 @@ final class Deactivator {
 	private static function cancel_running_scans(): void {
 		global $wpdb;
 
-		$table = $wpdb->prefix . 'ylc_scans';
+		$table = $wpdb->prefix . 'yoko_lc_scans';
 
 		// Check if table exists before querying.
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
@@ -94,8 +94,8 @@ final class Deactivator {
 	 * @return void
 	 */
 	private static function cleanup_transients(): void {
-		delete_transient( 'ylc_flush_rewrite' );
-		delete_transient( 'ylc_scan_lock' );
-		delete_transient( 'ylc_rate_limit_state' );
+		delete_transient( 'yoko_lc_flush_rewrite' );
+		delete_transient( 'yoko_lc_scan_lock' );
+		delete_transient( 'yoko_lc_rate_limit_state' );
 	}
 }

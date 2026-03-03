@@ -43,7 +43,8 @@ final class UrlNormalizer {
 	 */
 	public function __construct( string $home_url ) {
 		$this->home_url   = untrailingslashit( $home_url );
-		$this->home_parts = wp_parse_url( $this->home_url ) ?: array();
+		$parsed           = wp_parse_url( $this->home_url );
+		$this->home_parts = $parsed ? $parsed : array();
 	}
 
 	/**
@@ -168,9 +169,9 @@ final class UrlNormalizer {
 			return null;
 		}
 
-		$scheme   = $base_parts['scheme'] ?? 'https';
-		$host     = $base_parts['host'];
-		$port     = isset( $base_parts['port'] ) ? ':' . $base_parts['port'] : '';
+		$scheme    = $base_parts['scheme'] ?? 'https';
+		$host      = $base_parts['host'];
+		$port      = isset( $base_parts['port'] ) ? ':' . $base_parts['port'] : '';
 		$base_path = $base_parts['path'] ?? '/';
 
 		// Remove filename from base path to get directory.
@@ -232,9 +233,6 @@ final class UrlNormalizer {
 		// Normalize host to lowercase.
 		$host = strtolower( $parts['host'] ?? '' );
 
-		// Remove www. prefix for consistency (optional, configurable).
-		// $host = preg_replace( '/^www\./i', '', $host );
-
 		// Handle port (remove default ports).
 		$port = '';
 		if ( isset( $parts['port'] ) ) {
@@ -290,7 +288,7 @@ final class UrlNormalizer {
 		// Remove trailing slash for files (keep for directories).
 		// This is configurable; for now we preserve trailing slashes.
 
-		return $path ?: '/';
+		return $path ? $path : '/';
 	}
 
 	/**

@@ -179,7 +179,7 @@ final class HtmlExtractor implements ExtractorInterface {
 	 * Extract anchor links from DOM.
 	 *
 	 * @since 1.0.0
-	 * @param DOMDocument     $dom      DOM document.
+	 * @param DOMDocument  $dom      DOM document.
 	 * @param string|false $base_url Base URL for relative links.
 	 * @return array<ExtractedLink>
 	 */
@@ -234,7 +234,7 @@ final class HtmlExtractor implements ExtractorInterface {
 	 * Extract image links from DOM.
 	 *
 	 * @since 1.0.0
-	 * @param DOMDocument     $dom      DOM document.
+	 * @param DOMDocument  $dom      DOM document.
 	 * @param string|false $base_url Base URL for relative links.
 	 * @return array<ExtractedLink>
 	 */
@@ -272,7 +272,7 @@ final class HtmlExtractor implements ExtractorInterface {
 
 			$links[] = ExtractedLink::from_image(
 				$src,
-				$alt ?: null,
+				$alt ? $alt : null,
 				'post_content',
 				$position,
 				$attributes
@@ -287,7 +287,7 @@ final class HtmlExtractor implements ExtractorInterface {
 				foreach ( $srcset_urls as $srcset_url ) {
 					$links[] = ExtractedLink::from_image(
 						$srcset_url,
-						$alt ?: null,
+						$alt ? $alt : null,
 						'post_content',
 						$position,
 						array( 'from_srcset' => 'true' )
@@ -308,6 +308,7 @@ final class HtmlExtractor implements ExtractorInterface {
 	 * @return string
 	 */
 	private function get_node_text( \DOMNode $node ): string {
+		// phpcs:ignore WordPress.NamingConventions.ValidVariableName.UsedPropertyNotSnakeCase -- DOM property.
 		$text = $node->textContent ?? '';
 		$text = trim( preg_replace( '/\s+/', ' ', $text ) );
 
@@ -327,8 +328,8 @@ final class HtmlExtractor implements ExtractorInterface {
 	 * @return array<string>
 	 */
 	private function parse_srcset( string $srcset ): array {
-		$urls   = array();
-		$parts  = explode( ',', $srcset );
+		$urls  = array();
+		$parts = explode( ',', $srcset );
 
 		foreach ( $parts as $part ) {
 			$part = trim( $part );
@@ -365,12 +366,13 @@ final class HtmlExtractor implements ExtractorInterface {
 
 		foreach ( $matches as $match ) {
 			$url  = $match[1][0];
-			$text = strip_tags( $match[2][0] );
+			$text = wp_strip_all_tags( $match[2][0] );
 			$pos  = $match[0][1];
 
-			$link = ExtractedLink::from_anchor(
+			$trimmed_text = trim( $text );
+			$link         = ExtractedLink::from_anchor(
 				$url,
-				trim( $text ) ?: null,
+				$trimmed_text ? $trimmed_text : null,
 				'post_content',
 				$pos
 			);

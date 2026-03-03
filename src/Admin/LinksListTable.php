@@ -59,11 +59,11 @@ class LinksListTable extends WP_List_Table {
 		$this->link_repository = $link_repository;
 
 		parent::__construct(
-			[
+			array(
 				'singular' => __( 'Link', 'yoko-link-checker' ),
 				'plural'   => __( 'Links', 'yoko-link-checker' ),
 				'ajax'     => true,
-			]
+			)
 		);
 	}
 
@@ -85,7 +85,7 @@ class LinksListTable extends WP_List_Table {
 	 * @return array
 	 */
 	public function get_columns(): array {
-		return [
+		return array(
 			'cb'           => '<input type="checkbox" />',
 			'url'          => __( 'URL', 'yoko-link-checker' ),
 			'status'       => __( 'Status', 'yoko-link-checker' ),
@@ -93,7 +93,7 @@ class LinksListTable extends WP_List_Table {
 			'source'       => __( 'Source', 'yoko-link-checker' ),
 			'anchor_text'  => __( 'Anchor Text', 'yoko-link-checker' ),
 			'last_checked' => __( 'Last Checked', 'yoko-link-checker' ),
-		];
+		);
 	}
 
 	/**
@@ -103,12 +103,12 @@ class LinksListTable extends WP_List_Table {
 	 * @return array
 	 */
 	protected function get_sortable_columns(): array {
-		return [
-			'url'          => [ 'url', false ],
-			'status'       => [ 'status', false ],
-			'http_code'    => [ 'http_code', false ],
-			'last_checked' => [ 'last_checked', true ],
-		];
+		return array(
+			'url'          => array( 'url', false ),
+			'status'       => array( 'status', false ),
+			'http_code'    => array( 'http_code', false ),
+			'last_checked' => array( 'last_checked', true ),
+		);
 	}
 
 	/**
@@ -118,11 +118,11 @@ class LinksListTable extends WP_List_Table {
 	 * @return array
 	 */
 	protected function get_bulk_actions(): array {
-		return [
+		return array(
 			'ignore'   => __( 'Ignore', 'yoko-link-checker' ),
 			'unignore' => __( 'Un-ignore', 'yoko-link-checker' ),
 			'recheck'  => __( 'Recheck', 'yoko-link-checker' ),
-		];
+		);
 	}
 
 	/**
@@ -133,10 +133,10 @@ class LinksListTable extends WP_List_Table {
 	 */
 	public function prepare_items(): void {
 		$columns  = $this->get_columns();
-		$hidden   = [];
+		$hidden   = array();
 		$sortable = $this->get_sortable_columns();
 
-		$this->_column_headers = [ $columns, $hidden, $sortable ];
+		$this->_column_headers = array( $columns, $hidden, $sortable );
 
 		// Process bulk actions.
 		$this->process_bulk_action();
@@ -145,12 +145,13 @@ class LinksListTable extends WP_List_Table {
 		$current_page = $this->get_pagenum();
 
 		// Build query args.
-		$args = [
+		// phpcs:disable WordPress.Security.NonceVerification.Recommended -- List table parameters don't require nonce.
+		$args = array(
 			'per_page' => $this->per_page,
 			'page'     => $current_page,
 			'orderby'  => isset( $_GET['orderby'] ) ? sanitize_key( $_GET['orderby'] ) : 'last_checked',
 			'order'    => isset( $_GET['order'] ) ? strtoupper( sanitize_key( $_GET['order'] ) ) : 'DESC',
-		];
+		);
 
 		if ( 'all' !== $this->status_filter ) {
 			$args['status'] = $this->status_filter;
@@ -160,6 +161,7 @@ class LinksListTable extends WP_List_Table {
 		if ( ! empty( $_GET['s'] ) ) {
 			$args['search'] = sanitize_text_field( wp_unslash( $_GET['s'] ) );
 		}
+		// phpcs:enable
 
 		// Get items.
 		$this->items = $this->link_repository->get_links_with_urls( $args );
@@ -169,11 +171,11 @@ class LinksListTable extends WP_List_Table {
 
 		// Set pagination.
 		$this->set_pagination_args(
-			[
+			array(
 				'total_items' => $total_items,
 				'per_page'    => $this->per_page,
 				'total_pages' => ceil( $total_items / $this->per_page ),
-			]
+			)
 		);
 	}
 
@@ -196,13 +198,13 @@ class LinksListTable extends WP_List_Table {
 			return;
 		}
 
-		if ( ! current_user_can( 'ylc_manage_scans' ) ) {
+		if ( ! current_user_can( 'yoko_lc_manage_scans' ) ) {
 			return;
 		}
 
 		$link_ids = isset( $_REQUEST['link_ids'] ) && is_array( $_REQUEST['link_ids'] )
 			? array_map( 'absint', $_REQUEST['link_ids'] )
-			: [];
+			: array();
 
 		if ( empty( $link_ids ) ) {
 			return;
@@ -211,13 +213,13 @@ class LinksListTable extends WP_List_Table {
 		switch ( $action ) {
 			case 'ignore':
 				foreach ( $link_ids as $link_id ) {
-					$this->link_repository->update( $link_id, [ 'ignored' => 1 ] );
+					$this->link_repository->update( $link_id, array( 'ignored' => 1 ) );
 				}
 				break;
 
 			case 'unignore':
 				foreach ( $link_ids as $link_id ) {
-					$this->link_repository->update( $link_id, [ 'ignored' => 0 ] );
+					$this->link_repository->update( $link_id, array( 'ignored' => 0 ) );
 				}
 				break;
 
@@ -228,7 +230,7 @@ class LinksListTable extends WP_List_Table {
 				 * @since 1.0.0
 				 * @param array $link_ids Link IDs to recheck.
 				 */
-				do_action( 'ylc_recheck_links', $link_ids );
+				do_action( 'yoko_lc_recheck_links', $link_ids );
 				break;
 		}
 	}
@@ -257,26 +259,26 @@ class LinksListTable extends WP_List_Table {
 	protected function column_url( $item ): string {
 		$url           = esc_url( $item->url );
 		$url_display   = esc_html( $this->truncate_url( $item->url, 60 ) );
-		$actions_nonce = wp_create_nonce( "ylc_action_{$item->link_id}" );
+		$actions_nonce = wp_create_nonce( "yoko_lc_action_{$item->link_id}" );
 
-		$actions = [
+		$actions = array(
 			'view' => sprintf(
 				'<a href="%s" target="_blank" rel="noopener noreferrer">%s</a>',
 				$url,
 				__( 'Visit', 'yoko-link-checker' )
 			),
-		];
+		);
 
 		if ( empty( $item->ignored ) ) {
 			$actions['ignore'] = sprintf(
 				'<a href="%s">%s</a>',
 				esc_url(
 					add_query_arg(
-						[
+						array(
 							'action'   => 'ignore',
 							'link_id'  => $item->link_id,
 							'_wpnonce' => $actions_nonce,
-						]
+						)
 					)
 				),
 				__( 'Ignore', 'yoko-link-checker' )
@@ -286,11 +288,11 @@ class LinksListTable extends WP_List_Table {
 				'<a href="%s">%s</a>',
 				esc_url(
 					add_query_arg(
-						[
+						array(
 							'action'   => 'unignore',
 							'link_id'  => $item->link_id,
 							'_wpnonce' => $actions_nonce,
-						]
+						)
 					)
 				),
 				__( 'Un-ignore', 'yoko-link-checker' )
@@ -319,7 +321,7 @@ class LinksListTable extends WP_List_Table {
 	 * @return string
 	 */
 	protected function column_status( $item ): string {
-		$status_labels = [
+		$status_labels = array(
 			Url::STATUS_PENDING  => __( 'Pending', 'yoko-link-checker' ),
 			Url::STATUS_VALID    => __( 'Valid', 'yoko-link-checker' ),
 			Url::STATUS_REDIRECT => __( 'Redirect', 'yoko-link-checker' ),
@@ -328,7 +330,7 @@ class LinksListTable extends WP_List_Table {
 			Url::STATUS_BLOCKED  => __( 'Blocked', 'yoko-link-checker' ),
 			Url::STATUS_TIMEOUT  => __( 'Timeout', 'yoko-link-checker' ),
 			Url::STATUS_ERROR    => __( 'Error', 'yoko-link-checker' ),
-		];
+		);
 
 		$label = $status_labels[ $item->status ] ?? $item->status;
 
@@ -394,6 +396,7 @@ class LinksListTable extends WP_List_Table {
 		$post = get_post( $post_id );
 
 		if ( ! $post ) {
+			// translators: %d is the deleted post ID.
 			return sprintf( __( 'Deleted post #%d', 'yoko-link-checker' ), $post_id );
 		}
 
@@ -487,8 +490,8 @@ class LinksListTable extends WP_List_Table {
 		}
 		?>
 		<div class="alignleft actions">
-			<a href="<?php echo esc_url( admin_url( 'admin.php?page=yoko-link-checker-results&action=export&_wpnonce=' . wp_create_nonce( 'ylc_export' ) ) ); ?>" 
-			   class="button">
+			<a href="<?php echo esc_url( admin_url( 'admin.php?page=yoko-link-checker-results&action=export&_wpnonce=' . wp_create_nonce( 'yoko_lc_export' ) ) ); ?>" 
+				class="button">
 				<?php esc_html_e( 'Export CSV', 'yoko-link-checker' ); ?>
 			</a>
 		</div>

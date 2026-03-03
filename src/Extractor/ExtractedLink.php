@@ -82,12 +82,12 @@ final class ExtractedLink {
 	 * Constructor.
 	 *
 	 * @since 1.0.0
-	 * @param string      $url        The URL.
-	 * @param string|null $text       Anchor/alt text.
-	 * @param string      $type       Link type.
-	 * @param string      $field      Source field.
-	 * @param int|null    $position   Position in content.
-	 * @param string|null $context    Context snippet.
+	 * @param string                $url        The URL.
+	 * @param string|null           $text       Anchor/alt text.
+	 * @param string                $type       Link type.
+	 * @param string                $field      Source field.
+	 * @param int|null              $position   Position in content.
+	 * @param string|null           $context    Context snippet.
 	 * @param array<string, string> $attributes Element attributes.
 	 */
 	public function __construct(
@@ -112,10 +112,10 @@ final class ExtractedLink {
 	 * Create from anchor element data.
 	 *
 	 * @since 1.0.0
-	 * @param string               $href       Href attribute.
-	 * @param string|null          $text       Anchor text.
-	 * @param string               $field      Source field.
-	 * @param int|null             $position   Position in content.
+	 * @param string                $href       Href attribute.
+	 * @param string|null           $text       Anchor text.
+	 * @param string                $field      Source field.
+	 * @param int|null              $position   Position in content.
 	 * @param array<string, string> $attributes All attributes.
 	 * @return self
 	 */
@@ -141,10 +141,10 @@ final class ExtractedLink {
 	 * Create from image element data.
 	 *
 	 * @since 1.0.0
-	 * @param string               $src        Src attribute.
-	 * @param string|null          $alt        Alt text.
-	 * @param string               $field      Source field.
-	 * @param int|null             $position   Position in content.
+	 * @param string                $src        Src attribute.
+	 * @param string|null           $alt        Alt text.
+	 * @param string                $field      Source field.
+	 * @param int|null              $position   Position in content.
 	 * @param array<string, string> $attributes All attributes.
 	 * @return self
 	 */

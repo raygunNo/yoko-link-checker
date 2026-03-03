@@ -115,7 +115,7 @@ class BatchProcessor {
 		$total_posts = $this->content_discovery->count_posts();
 		$last_id     = $after_id;
 
-		error_log( "[YLC Debug] process_discovery_batch - Got " . count( $posts ) . " posts, total_posts: $total_posts" );
+		error_log( '[YLC Debug] process_discovery_batch - Got ' . count( $posts ) . " posts, total_posts: $total_posts" );
 
 		foreach ( $posts as $post ) {
 			$this->process_post( $scan_id, $post );
@@ -167,7 +167,7 @@ class BatchProcessor {
 		 * @param bool    $skip Whether to skip.
 		 * @param WP_Post $post Post object.
 		 */
-		if ( apply_filters( 'ylc_skip_post', false, $post ) ) {
+		if ( apply_filters( 'yoko_lc_skip_post', false, $post ) ) {
 			return 0;
 		}
 
@@ -200,16 +200,16 @@ class BatchProcessor {
 			}
 
 			// Create new link occurrence.
-			$link               = new Link();
-			$link->url_id       = $url->id;
-			$link->source_id    = $post->ID;
-			$link->source_type  = $post->post_type;
-			$link->source_field = $extracted->field;
-			$link->anchor_text  = $extracted->text;
-			$link->link_context = $extracted->context;
+			$link                = new Link();
+			$link->url_id        = $url->id;
+			$link->source_id     = $post->ID;
+			$link->source_type   = $post->post_type;
+			$link->source_field  = $extracted->field;
+			$link->anchor_text   = $extracted->text;
+			$link->link_context  = $extracted->context;
 			$link->link_position = $extracted->position;
-			$link->created_at   = current_time( 'mysql' );
-			$link->updated_at   = current_time( 'mysql' );
+			$link->created_at    = current_time( 'mysql' );
+			$link->updated_at    = current_time( 'mysql' );
 
 			$inserted = $this->link_repository->insert( $link );
 
@@ -226,7 +226,7 @@ class BatchProcessor {
 		 * @param int     $link_count Number of links found.
 		 * @param int     $scan_id    Scan ID.
 		 */
-		do_action( 'ylc_post_processed', $post, $link_count, $scan_id );
+		do_action( 'yoko_lc_post_processed', $post, $link_count, $scan_id );
 
 		return $link_count;
 	}
@@ -249,7 +249,7 @@ class BatchProcessor {
 		foreach ( $urls as $url ) {
 			try {
 				$this->check_url( $url );
-				$actual_checked++;
+				++$actual_checked;
 			} catch ( \Throwable $e ) {
 				// Log error but continue with other URLs.
 				error_log( '[YLC] URL check failed for ID ' . $url->id . ': ' . $e->getMessage() );
@@ -260,7 +260,7 @@ class BatchProcessor {
 				$url->check_count   = ( $url->check_count ?? 0 ) + 1;
 				try {
 					$this->url_repository->update( $url );
-					$actual_checked++;
+					++$actual_checked;
 				} catch ( \Throwable $update_error ) {
 					error_log( '[YLC] Failed to update URL ' . $url->id . ': ' . $update_error->getMessage() );
 				}
@@ -312,7 +312,7 @@ class BatchProcessor {
 		 * @param bool $skip Whether to skip.
 		 * @param Url  $url  URL model.
 		 */
-		if ( apply_filters( 'ylc_skip_url_check', false, $url ) ) {
+		if ( apply_filters( 'yoko_lc_skip_url_check', false, $url ) ) {
 			return;
 		}
 
@@ -336,7 +336,7 @@ class BatchProcessor {
 		 * @param Url                              $url    URL model.
 		 * @param \YokoLinkChecker\Checker\CheckResult $result Check result.
 		 */
-		do_action( 'ylc_url_checked', $url, $result );
+		do_action( 'yoko_lc_url_checked', $url, $result );
 	}
 
 	/**

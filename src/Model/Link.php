@@ -3,7 +3,7 @@
  * Link entity model.
  *
  * Represents a link occurrence in content.
- * Maps to the ylc_links database table.
+ * Maps to the yoko_lc_links database table.
  *
  * @package YokoLinkChecker
  * @since   1.0.0
@@ -28,7 +28,7 @@ final class Link {
 	public ?int $id = null;
 
 	/**
-	 * URL ID (foreign key to ylc_urls).
+	 * URL ID (foreign key to yoko_lc_urls).
 	 *
 	 * @var int
 	 */
@@ -169,7 +169,8 @@ final class Link {
 	 * @return string
 	 */
 	public function get_source_edit_url(): string {
-		return get_edit_post_link( $this->source_id, 'raw' ) ?: '';
+		$url = get_edit_post_link( $this->source_id, 'raw' );
+		return $url ? $url : '';
 	}
 
 	/**
@@ -179,7 +180,8 @@ final class Link {
 	 * @return string
 	 */
 	public function get_source_permalink(): string {
-		return get_permalink( $this->source_id ) ?: '';
+		$permalink = get_permalink( $this->source_id );
+		return $permalink ? $permalink : '';
 	}
 
 	/**

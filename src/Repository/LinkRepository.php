@@ -2,7 +2,7 @@
 /**
  * Link Repository.
  *
- * Handles CRUD operations for the ylc_links table.
+ * Handles CRUD operations for the yoko_lc_links table.
  * Manages link occurrences in content.
  *
  * @package YokoLinkChecker
@@ -45,8 +45,8 @@ final class LinkRepository {
 	public function __construct() {
 		global $wpdb;
 
-		$this->table      = $wpdb->prefix . 'ylc_links';
-		$this->urls_table = $wpdb->prefix . 'ylc_urls';
+		$this->table      = $wpdb->prefix . 'yoko_lc_links';
+		$this->urls_table = $wpdb->prefix . 'yoko_lc_urls';
 	}
 
 	/**
@@ -83,17 +83,19 @@ final class LinkRepository {
 	public function find_existing( int $url_id, int $source_id, string $source_type, string $source_field ): ?Link {
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name is safe.
 		$row = $wpdb->get_row(
 			$wpdb->prepare(
 				"SELECT * FROM {$this->table} 
-				WHERE url_id = %d AND source_id = %d AND source_type = %s AND source_field = %s", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				WHERE url_id = %d AND source_id = %d AND source_type = %s AND source_field = %s",
 				$url_id,
 				$source_id,
 				$source_type,
 				$source_field
 			)
 		);
+		// phpcs:enable
 
 		return $row ? Link::from_row( $row ) : null;
 	}
@@ -227,7 +229,7 @@ final class LinkRepository {
 			array( '%d', '%s' )
 		);
 
-		return $result !== false ? (int) $result : 0;
+		return false !== $result ? (int) $result : 0;
 	}
 
 	/**
@@ -240,17 +242,19 @@ final class LinkRepository {
 	public function get_by_url( int $url_id ): array {
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names are safe.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT l.*, u.url, u.url_normalized, u.status as url_status, u.http_code, u.final_url, u.error_message as url_error 
 				FROM {$this->table} l 
 				JOIN {$this->urls_table} u ON l.url_id = u.id 
 				WHERE l.url_id = %d 
-				ORDER BY l.source_id ASC", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				ORDER BY l.source_id ASC",
 				$url_id
 			)
 		);
+		// phpcs:enable
 
 		return array_map(
 			function ( $row ) {
@@ -274,22 +278,24 @@ final class LinkRepository {
 	public function get_by_source( int $source_id, string $source_type ): array {
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names are safe.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT l.*, u.url, u.url_normalized, u.status as url_status, u.http_code, u.final_url, u.error_message as url_error 
 				FROM {$this->table} l 
 				JOIN {$this->urls_table} u ON l.url_id = u.id 
 				WHERE l.source_id = %d AND l.source_type = %s 
-				ORDER BY l.link_position ASC", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				ORDER BY l.link_position ASC",
 				$source_id,
 				$source_type
 			)
 		);
+		// phpcs:enable
 
 		return array_map(
 			function ( $row ) {
-				$link = Link::from_row( $row );
+				$link      = Link::from_row( $row );
 				$link->url = Url::from_row( $row );
 				return $link;
 			},
@@ -301,9 +307,9 @@ final class LinkRepository {
 	 * Get links with problems (joined with URL status).
 	 *
 	 * @since 1.0.0
-	 * @param array<string> $statuses Statuses to include.
-	 * @param int           $limit    Maximum links to return.
-	 * @param int           $offset   Offset for pagination.
+	 * @param array<string>        $statuses Statuses to include.
+	 * @param int                  $limit    Maximum links to return.
+	 * @param int                  $offset   Offset for pagination.
 	 * @param array<string, mixed> $filters Additional filters.
 	 * @return array<Link>
 	 */
@@ -366,7 +372,7 @@ final class LinkRepository {
 	 * Count links with status.
 	 *
 	 * @since 1.0.0
-	 * @param array<string> $statuses Statuses to count.
+	 * @param array<string>        $statuses Statuses to count.
 	 * @param array<string, mixed> $filters Additional filters.
 	 * @return int
 	 */
@@ -521,7 +527,7 @@ final class LinkRepository {
 			$rows = $wpdb->get_results( $sql );
 		}
 
-		return $rows ?: array();
+		return $rows ? $rows : array();
 	}
 
 	/**
@@ -534,16 +540,20 @@ final class LinkRepository {
 	public function count_links_with_status( ?string $status = null ): int {
 		global $wpdb;
 
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names are safe.
 		$sql = "SELECT COUNT(DISTINCT l.id) 
 				FROM {$this->table} l 
 				JOIN {$this->urls_table} u ON l.url_id = u.id 
-				WHERE u.is_ignored = 0"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				WHERE u.is_ignored = 0";
+		// phpcs:enable
 
 		if ( ! empty( $status ) && 'all' !== $status ) {
-			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- $sql is built safely above.
 			return (int) $wpdb->get_var(
 				$wpdb->prepare( $sql . ' AND u.status = %s', $status )
 			);
+			// phpcs:enable
 		}
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared

@@ -39,7 +39,7 @@ final class ContentDiscovery {
 		 * @since 1.0.0
 		 * @param array<string> $post_types Post type slugs.
 		 */
-		return apply_filters( 'ylc_scannable_post_types', array_values( $post_types ) );
+		return apply_filters( 'yoko_lc_scannable_post_types', array_values( $post_types ) );
 	}
 
 	/**
@@ -57,7 +57,7 @@ final class ContentDiscovery {
 		 * @since 1.0.0
 		 * @param array<string> $statuses Post status slugs.
 		 */
-		return apply_filters( 'ylc_scannable_post_statuses', $statuses );
+		return apply_filters( 'yoko_lc_scannable_post_statuses', $statuses );
 	}
 
 	/**
@@ -69,8 +69,8 @@ final class ContentDiscovery {
 	public function count_posts(): int {
 		global $wpdb;
 
-		$post_types  = $this->get_post_types();
-		$statuses    = $this->get_post_statuses();
+		$post_types = $this->get_post_types();
+		$statuses   = $this->get_post_statuses();
 
 		if ( empty( $post_types ) || empty( $statuses ) ) {
 			return 0;
@@ -81,7 +81,8 @@ final class ContentDiscovery {
 
 		$params = array_merge( $post_types, $statuses );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare
 		return (int) $wpdb->get_var(
 			$wpdb->prepare(
 				"SELECT COUNT(*) FROM {$wpdb->posts} 
@@ -90,6 +91,7 @@ final class ContentDiscovery {
 				$params
 			)
 		);
+		// phpcs:enable
 	}
 
 	/**
@@ -105,8 +107,8 @@ final class ContentDiscovery {
 	public function get_batch( int $after_id = 0, int $batch_size = 50 ): array {
 		global $wpdb;
 
-		$post_types  = $this->get_post_types();
-		$statuses    = $this->get_post_statuses();
+		$post_types = $this->get_post_types();
+		$statuses   = $this->get_post_statuses();
 
 		if ( empty( $post_types ) || empty( $statuses ) ) {
 			return array();
@@ -115,9 +117,10 @@ final class ContentDiscovery {
 		$type_placeholders   = implode( ', ', array_fill( 0, count( $post_types ), '%s' ) );
 		$status_placeholders = implode( ', ', array_fill( 0, count( $statuses ), '%s' ) );
 
-		$params   = array_merge( $post_types, $statuses, array( $after_id, $batch_size ) );
+		$params = array_merge( $post_types, $statuses, array( $after_id, $batch_size ) );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 		$post_ids = $wpdb->get_col(
 			$wpdb->prepare(
 				"SELECT ID FROM {$wpdb->posts} 
@@ -129,6 +132,7 @@ final class ContentDiscovery {
 				$params
 			)
 		);
+		// phpcs:enable
 
 		if ( empty( $post_ids ) ) {
 			return array();
@@ -179,7 +183,7 @@ final class ContentDiscovery {
 		 * @param bool    $scannable Whether the post is scannable.
 		 * @param WP_Post $post      The post object.
 		 */
-		return apply_filters( 'ylc_is_post_scannable', true, $post );
+		return apply_filters( 'yoko_lc_is_post_scannable', true, $post );
 	}
 
 	/**
@@ -196,8 +200,8 @@ final class ContentDiscovery {
 	public function get_modified_since( string $since, int $after_id = 0, int $batch_size = 50 ): array {
 		global $wpdb;
 
-		$post_types  = $this->get_post_types();
-		$statuses    = $this->get_post_statuses();
+		$post_types = $this->get_post_types();
+		$statuses   = $this->get_post_statuses();
 
 		if ( empty( $post_types ) || empty( $statuses ) ) {
 			return array();
@@ -208,7 +212,8 @@ final class ContentDiscovery {
 
 		$params = array_merge( $post_types, $statuses, array( $since, $after_id, $batch_size ) );
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared,WordPress.DB.PreparedSQLPlaceholders.ReplacementsWrongNumber
 		$post_ids = $wpdb->get_col(
 			$wpdb->prepare(
 				"SELECT ID FROM {$wpdb->posts} 
@@ -221,6 +226,7 @@ final class ContentDiscovery {
 				$params
 			)
 		);
+		// phpcs:enable
 
 		if ( empty( $post_ids ) ) {
 			return array();

@@ -34,7 +34,7 @@ final class Activator {
 	 *
 	 * @var string
 	 */
-	public const SCHEMA_VERSION_OPTION = 'ylc_schema_version';
+	public const SCHEMA_VERSION_OPTION = 'yoko_lc_schema_version';
 
 	/**
 	 * Run activation routine.
@@ -49,10 +49,10 @@ final class Activator {
 		self::set_capabilities();
 
 		// Flush rewrite rules on next page load.
-		set_transient( 'ylc_flush_rewrite', 1, 60 );
+		set_transient( 'yoko_lc_flush_rewrite', 1, 60 );
 
 		// Record activation.
-		update_option( 'ylc_activated_at', current_time( 'mysql' ) );
+		update_option( 'yoko_lc_activated_at', current_time( 'mysql' ) );
 	}
 
 	/**
@@ -69,11 +69,11 @@ final class Activator {
 		$charset_collate = $wpdb->get_charset_collate();
 
 		// Table name prefixes.
-		$urls_table  = $wpdb->prefix . 'ylc_urls';
-		$links_table = $wpdb->prefix . 'ylc_links';
-		$scans_table = $wpdb->prefix . 'ylc_scans';
+		$urls_table  = $wpdb->prefix . 'yoko_lc_urls';
+		$links_table = $wpdb->prefix . 'yoko_lc_links';
+		$scans_table = $wpdb->prefix . 'yoko_lc_scans';
 
-		// SQL for ylc_urls table.
+		// SQL for yoko_lc_urls table.
 		// Stores unique URLs with their check results.
 		$sql_urls = "CREATE TABLE {$urls_table} (
 			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -103,7 +103,7 @@ final class Activator {
 			KEY status_ignored (status, is_ignored)
 		) {$charset_collate};";
 
-		// SQL for ylc_links table.
+		// SQL for yoko_lc_links table.
 		// Stores link occurrences in content (many-to-one with urls).
 		$sql_links = "CREATE TABLE {$links_table} (
 			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -123,7 +123,7 @@ final class Activator {
 			KEY source_composite (source_id, source_type, source_field)
 		) {$charset_collate};";
 
-		// SQL for ylc_scans table.
+		// SQL for yoko_lc_scans table.
 		// Stores scan run metadata and state for resumability.
 		$sql_scans = "CREATE TABLE {$scans_table} (
 			id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
@@ -163,7 +163,7 @@ final class Activator {
 	 */
 	private static function set_default_options(): void {
 		$defaults = array(
-			'ylc_settings' => array(
+			'yoko_lc_settings' => array(
 				// Scan settings.
 				'post_types'            => array( 'post', 'page' ),
 				'post_statuses'         => array( 'publish' ),
@@ -173,7 +173,7 @@ final class Activator {
 				// HTTP settings.
 				'request_timeout'       => 15,
 				'max_redirects'         => 5,
-				'user_agent'            => 'YokoLinkChecker/' . YLC_VERSION . ' (WordPress Link Checker)',
+				'user_agent'            => 'YokoLinkChecker/' . YOKO_LC_VERSION . ' (WordPress Link Checker)',
 				'verify_ssl'            => true,
 
 				// Rate limiting.
@@ -206,16 +206,18 @@ final class Activator {
 	 */
 	private static function schedule_cron_events(): void {
 		// Register custom cron schedules if needed.
+		// phpcs:disable WordPress.WP.CronInterval.CronSchedulesInterval -- 5-minute interval is intentional for link checking.
 		add_filter(
 			'cron_schedules',
 			function ( array $schedules ): array {
-				$schedules['ylc_five_minutes'] = array(
+				$schedules['yoko_lc_five_minutes'] = array(
 					'interval' => 300,
 					'display'  => __( 'Every Five Minutes', 'yoko-link-checker' ),
 				);
 				return $schedules;
 			}
 		);
+		// phpcs:enable WordPress.WP.CronInterval.CronSchedulesInterval
 
 		// Note: We don't auto-schedule scans.
 		// Scans are user-initiated in the MVP.
@@ -232,9 +234,9 @@ final class Activator {
 		$admin_role = get_role( 'administrator' );
 
 		if ( $admin_role ) {
-			$admin_role->add_cap( 'ylc_manage_scans' );
-			$admin_role->add_cap( 'ylc_view_results' );
-			$admin_role->add_cap( 'ylc_manage_settings' );
+			$admin_role->add_cap( 'yoko_lc_manage_scans' );
+			$admin_role->add_cap( 'yoko_lc_view_results' );
+			$admin_role->add_cap( 'yoko_lc_manage_settings' );
 		}
 	}
 

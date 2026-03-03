@@ -2,7 +2,7 @@
 /**
  * URL Repository.
  *
- * Handles CRUD operations for the ylc_urls table.
+ * Handles CRUD operations for the yoko_lc_urls table.
  * Manages unique URLs with deduplication via hash.
  *
  * @package YokoLinkChecker
@@ -47,7 +47,7 @@ final class UrlRepository {
 		global $wpdb;
 
 		$this->normalizer = $normalizer;
-		$this->table      = $wpdb->prefix . 'ylc_urls';
+		$this->table      = $wpdb->prefix . 'yoko_lc_urls';
 	}
 
 	/**
@@ -234,13 +234,14 @@ final class UrlRepository {
 	 * @since 1.0.0
 	 * @param int $limit      Maximum URLs to return.
 	 * @param int $after_id   Start after this ID (for cursor pagination).
-	 * @param int $scan_id    Optional scan ID for phase tracking.
+	 * @param int $scan_id    Optional scan ID for phase tracking (reserved for future use).
 	 * @return array<Url>
 	 */
-	public function get_pending( int $limit = 20, int $after_id = 0, int $scan_id = 0 ): array {
+	public function get_pending( int $limit = 20, int $after_id = 0, int $scan_id = 0 ): array { // phpcs:ignore Generic.CodeAnalysis.UnusedFunctionParameter.FoundAfterLastUsed -- Reserved for future use.
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name is safe.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT * FROM {$this->table} 
@@ -248,12 +249,13 @@ final class UrlRepository {
 				AND is_ignored = 0 
 				AND id > %d 
 				ORDER BY id ASC 
-				LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				LIMIT %d",
 				Url::STATUS_PENDING,
 				$after_id,
 				$limit
 			)
 		);
+		// phpcs:enable
 
 		return array_map( fn( $row ) => Url::from_row( $row ), $rows );
 	}
@@ -268,7 +270,8 @@ final class UrlRepository {
 	public function get_due_for_recheck( int $limit = 20 ): array {
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name is safe.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT * FROM {$this->table} 
@@ -276,11 +279,12 @@ final class UrlRepository {
 				AND next_check <= %s 
 				AND is_ignored = 0 
 				ORDER BY next_check ASC 
-				LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				LIMIT %d",
 				current_time( 'mysql' ),
 				$limit
 			)
 		);
+		// phpcs:enable
 
 		return array_map( fn( $row ) => Url::from_row( $row ), $rows );
 	}
@@ -297,18 +301,20 @@ final class UrlRepository {
 	public function get_by_status( string $status, int $limit = 50, int $offset = 0 ): array {
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name is safe.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT * FROM {$this->table} 
 				WHERE status = %s 
 				ORDER BY last_checked DESC 
-				LIMIT %d OFFSET %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				LIMIT %d OFFSET %d",
 				$status,
 				$limit,
 				$offset
 			)
 		);
+		// phpcs:enable
 
 		return array_map( fn( $row ) => Url::from_row( $row ), $rows );
 	}
@@ -443,17 +449,19 @@ final class UrlRepository {
 	public function reset_all(): int {
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name is safe.
 		$result = $wpdb->query(
 			$wpdb->prepare(
 				"UPDATE {$this->table} SET status = %s, http_code = NULL, final_url = NULL, 
 				redirect_count = 0, response_time = NULL, error_type = NULL, error_message = NULL 
-				WHERE is_ignored = 0", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+				WHERE is_ignored = 0",
 				Url::STATUS_PENDING
 			)
 		);
+		// phpcs:enable
 
-		return $result !== false ? (int) $result : 0;
+		return false !== $result ? (int) $result : 0;
 	}
 
 	/**

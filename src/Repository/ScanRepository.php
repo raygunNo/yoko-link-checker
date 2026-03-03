@@ -2,7 +2,7 @@
 /**
  * Scan Repository.
  *
- * Handles CRUD operations for the ylc_scans table.
+ * Handles CRUD operations for the yoko_lc_scans table.
  * Manages scan run state and resumability.
  *
  * @package YokoLinkChecker
@@ -37,7 +37,7 @@ final class ScanRepository {
 	public function __construct() {
 		global $wpdb;
 
-		$this->table = $wpdb->prefix . 'ylc_scans';
+		$this->table = $wpdb->prefix . 'yoko_lc_scans';
 	}
 
 	/**
@@ -409,12 +409,14 @@ final class ScanRepository {
 		$keep_ids_str = implode( ',', array_map( 'intval', $keep_ids ) );
 
 		// Delete older scans.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name is safe, $keep_ids_str is sanitized with intval.
 		$result = $wpdb->query(
 			"DELETE FROM {$this->table} WHERE id NOT IN ({$keep_ids_str})"
 		);
+		// phpcs:enable
 
-		return $result !== false ? (int) $result : 0;
+		return false !== $result ? (int) $result : 0;
 	}
 
 	/**

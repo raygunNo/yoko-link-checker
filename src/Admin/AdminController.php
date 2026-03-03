@@ -70,8 +70,8 @@ class AdminController {
 	 * @return void
 	 */
 	public function register(): void {
-		add_action( 'admin_menu', [ $this, 'register_menu' ] );
-		add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_assets' ] );
+		add_action( 'admin_menu', array( $this, 'register_menu' ) );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 
 		// Register AJAX handlers.
 		$this->ajax_handler->register();
@@ -85,8 +85,8 @@ class AdminController {
 	 */
 	public function register_menu(): void {
 		// Use manage_options as fallback if custom caps don't exist.
-		$view_cap     = current_user_can( 'ylc_view_results' ) ? 'ylc_view_results' : 'manage_options';
-		$settings_cap = current_user_can( 'ylc_manage_settings' ) ? 'ylc_manage_settings' : 'manage_options';
+		$view_cap     = current_user_can( 'yoko_lc_view_results' ) ? 'yoko_lc_view_results' : 'manage_options';
+		$settings_cap = current_user_can( 'yoko_lc_manage_settings' ) ? 'yoko_lc_manage_settings' : 'manage_options';
 
 		// Main menu page.
 		add_menu_page(
@@ -94,7 +94,7 @@ class AdminController {
 			__( 'Link Checker', 'yoko-link-checker' ),
 			$view_cap,
 			self::MENU_SLUG,
-			[ $this->dashboard_page, 'render' ],
+			array( $this->dashboard_page, 'render' ),
 			'dashicons-admin-links',
 			80
 		);
@@ -106,7 +106,7 @@ class AdminController {
 			__( 'Dashboard', 'yoko-link-checker' ),
 			$view_cap,
 			self::MENU_SLUG,
-			[ $this->dashboard_page, 'render' ]
+			array( $this->dashboard_page, 'render' )
 		);
 
 		// Results submenu.
@@ -116,7 +116,7 @@ class AdminController {
 			__( 'Broken Links', 'yoko-link-checker' ),
 			$view_cap,
 			self::MENU_SLUG . '-results',
-			[ $this->results_page, 'render' ]
+			array( $this->results_page, 'render' )
 		);
 
 		// Settings submenu.
@@ -126,7 +126,7 @@ class AdminController {
 			__( 'Settings', 'yoko-link-checker' ),
 			$settings_cap,
 			self::MENU_SLUG . '-settings',
-			[ $this, 'render_settings' ]
+			array( $this, 'render_settings' )
 		);
 	}
 
@@ -146,17 +146,17 @@ class AdminController {
 		// Styles.
 		wp_enqueue_style(
 			'ylc-admin',
-			YLC_PLUGIN_URL . 'assets/css/admin.css',
-			[],
-			YLC_VERSION
+			YOKO_LC_PLUGIN_URL . 'assets/css/admin.css',
+			array(),
+			YOKO_LC_VERSION
 		);
 
 		// Scripts.
 		wp_enqueue_script(
 			'ylc-admin',
-			YLC_PLUGIN_URL . 'assets/js/admin.js',
-			[ 'jquery' ],
-			YLC_VERSION,
+			YOKO_LC_PLUGIN_URL . 'assets/js/admin.js',
+			array( 'jquery' ),
+			YOKO_LC_VERSION,
 			true
 		);
 
@@ -183,10 +183,10 @@ class AdminController {
 	 * @return array
 	 */
 	private function get_js_data(): array {
-		return [
-			'ajaxUrl'  => admin_url( 'admin-ajax.php' ),
-			'nonce'    => wp_create_nonce( 'ylc_admin' ),
-			'strings'  => [
+		return array(
+			'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+			'nonce'   => wp_create_nonce( 'yoko_lc_admin' ),
+			'strings' => array(
 				'confirmStart'  => __( 'Start a new scan?', 'yoko-link-checker' ),
 				'confirmCancel' => __( 'Cancel the current scan?', 'yoko-link-checker' ),
 				'confirmIgnore' => __( 'Ignore this link?', 'yoko-link-checker' ),
@@ -194,8 +194,8 @@ class AdminController {
 				'checking'      => __( 'Checking...', 'yoko-link-checker' ),
 				'complete'      => __( 'Complete', 'yoko-link-checker' ),
 				'error'         => __( 'An error occurred. Please try again.', 'yoko-link-checker' ),
-			],
-		];
+			),
+		);
 	}
 
 	/**
@@ -206,13 +206,14 @@ class AdminController {
 	 */
 	public function render_settings(): void {
 		// Handle form submission.
-		if ( isset( $_POST['ylc_settings_nonce'] ) ) {
+		// phpcs:ignore WordPress.Security.NonceVerification.Missing -- Nonce verified in handle_settings_save().
+		if ( isset( $_POST['yoko_lc_settings_nonce'] ) ) {
 			$this->handle_settings_save();
 		}
 
 		$settings = $this->get_settings();
 
-		include YLC_PLUGIN_DIR . 'templates/admin/settings.php';
+		include YOKO_LC_PLUGIN_DIR . 'templates/admin/settings.php';
 	}
 
 	/**
@@ -223,37 +224,37 @@ class AdminController {
 	 */
 	private function handle_settings_save(): void {
 		// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
-		if ( ! wp_verify_nonce( wp_unslash( $_POST['ylc_settings_nonce'] ?? '' ), 'ylc_settings' ) ) {
-			add_settings_error( 'ylc_settings', 'nonce_error', __( 'Security check failed.', 'yoko-link-checker' ) );
+		if ( ! wp_verify_nonce( wp_unslash( $_POST['yoko_lc_settings_nonce'] ?? '' ), 'yoko_lc_settings' ) ) {
+			add_settings_error( 'yoko_lc_settings', 'nonce_error', __( 'Security check failed.', 'yoko-link-checker' ) );
 			return;
 		}
 
-		if ( ! current_user_can( 'ylc_manage_settings' ) ) {
-			add_settings_error( 'ylc_settings', 'permission_error', __( 'Permission denied.', 'yoko-link-checker' ) );
+		if ( ! current_user_can( 'yoko_lc_manage_settings' ) ) {
+			add_settings_error( 'yoko_lc_settings', 'permission_error', __( 'Permission denied.', 'yoko-link-checker' ) );
 			return;
 		}
 
 		// Sanitize and save settings.
-		$post_types = isset( $_POST['ylc_post_types'] ) && is_array( $_POST['ylc_post_types'] )
-			? array_map( 'sanitize_key', $_POST['ylc_post_types'] )
-			: [ 'post', 'page' ];
+		$post_types = isset( $_POST['yoko_lc_post_types'] ) && is_array( $_POST['yoko_lc_post_types'] )
+			? array_map( 'sanitize_key', $_POST['yoko_lc_post_types'] )
+			: array( 'post', 'page' );
 
-		$check_timeout = isset( $_POST['ylc_check_timeout'] )
-			? absint( $_POST['ylc_check_timeout'] )
+		$check_timeout = isset( $_POST['yoko_lc_check_timeout'] )
+			? absint( $_POST['yoko_lc_check_timeout'] )
 			: 30;
 
-		$auto_scan = isset( $_POST['ylc_auto_scan_enabled'] );
+		$auto_scan = isset( $_POST['yoko_lc_auto_scan_enabled'] );
 
-		$scan_frequency = isset( $_POST['ylc_auto_scan_frequency'] )
-			? sanitize_key( $_POST['ylc_auto_scan_frequency'] )
+		$scan_frequency = isset( $_POST['yoko_lc_auto_scan_frequency'] )
+			? sanitize_key( $_POST['yoko_lc_auto_scan_frequency'] )
 			: 'weekly';
 
-		update_option( 'ylc_post_types', $post_types );
-		update_option( 'ylc_check_timeout', min( 120, max( 5, $check_timeout ) ) );
-		update_option( 'ylc_auto_scan_enabled', $auto_scan );
-		update_option( 'ylc_auto_scan_frequency', $scan_frequency );
+		update_option( 'yoko_lc_post_types', $post_types );
+		update_option( 'yoko_lc_check_timeout', min( 120, max( 5, $check_timeout ) ) );
+		update_option( 'yoko_lc_auto_scan_enabled', $auto_scan );
+		update_option( 'yoko_lc_auto_scan_frequency', $scan_frequency );
 
-		add_settings_error( 'ylc_settings', 'saved', __( 'Settings saved.', 'yoko-link-checker' ), 'success' );
+		add_settings_error( 'yoko_lc_settings', 'saved', __( 'Settings saved.', 'yoko-link-checker' ), 'success' );
 	}
 
 	/**
@@ -263,11 +264,11 @@ class AdminController {
 	 * @return array
 	 */
 	private function get_settings(): array {
-		return [
-			'post_types'          => get_option( 'ylc_post_types', [ 'post', 'page' ] ),
-			'check_timeout'       => get_option( 'ylc_check_timeout', 30 ),
-			'auto_scan_enabled'   => get_option( 'ylc_auto_scan_enabled', false ),
-			'auto_scan_frequency' => get_option( 'ylc_auto_scan_frequency', 'weekly' ),
-		];
+		return array(
+			'post_types'          => get_option( 'yoko_lc_post_types', array( 'post', 'page' ) ),
+			'check_timeout'       => get_option( 'yoko_lc_check_timeout', 30 ),
+			'auto_scan_enabled'   => get_option( 'yoko_lc_auto_scan_enabled', false ),
+			'auto_scan_frequency' => get_option( 'yoko_lc_auto_scan_frequency', 'weekly' ),
+		);
 	}
 }

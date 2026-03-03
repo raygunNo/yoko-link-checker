@@ -3,7 +3,7 @@
  * URL entity model.
  *
  * Represents a unique URL and its check status.
- * Maps to the ylc_urls database table.
+ * Maps to the yoko_lc_urls database table.
  *
  * @package YokoLinkChecker
  * @since   1.0.0
@@ -218,13 +218,13 @@ final class Url {
 		$url->response_time  = isset( $row->response_time ) ? (int) $row->response_time : null;
 		$url->error_type     = $row->error_type ?? null;
 		// Support aliased error_message from joined queries.
-		$url->error_message  = $row->url_error ?? $row->error_message ?? null;
-		$url->check_count    = (int) ( $row->check_count ?? 0 );
-		$url->first_seen     = $row->first_seen ?? '';
-		$url->last_checked   = $row->last_checked ?? null;
-		$url->next_check     = $row->next_check ?? null;
-		$url->is_ignored     = (bool) ( $row->is_ignored ?? false );
-		$url->ignore_reason  = $row->ignore_reason ?? null;
+		$url->error_message = $row->url_error ?? $row->error_message ?? null;
+		$url->check_count   = (int) ( $row->check_count ?? 0 );
+		$url->first_seen    = $row->first_seen ?? '';
+		$url->last_checked  = $row->last_checked ?? null;
+		$url->next_check    = $row->next_check ?? null;
+		$url->is_ignored    = (bool) ( $row->is_ignored ?? false );
+		$url->ignore_reason = $row->ignore_reason ?? null;
 
 		return $url;
 	}
