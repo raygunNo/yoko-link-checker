@@ -21,10 +21,10 @@ jobs:
       - name: Assert version matches tag
         run: |
           PLUGIN_VERSION=$(grep -oP "(?<=\* Version: )\S+" yoko-link-checker.php)
-          CONST_VERSION=$(grep -oP "(?<=define\( 'YLC_VERSION', ')\d+\.\d+\.\d+(?=')" yoko-link-checker.php)
+          CONST_VERSION=$(grep -oP "(?<=define\( 'YOKO_LC_VERSION', ')\d+\.\d+\.\d+(?=')" yoko-link-checker.php)
           echo "Tag: $VERSION | Header: $PLUGIN_VERSION | Constant: $CONST_VERSION"
           if [ "$PLUGIN_VERSION" != "$VERSION" ] || [ "$CONST_VERSION" != "$VERSION" ]; then
-            echo "ERROR: Version mismatch! Plugin header and YLC_VERSION constant must both match tag v$VERSION."
+            echo "ERROR: Version mismatch! Plugin header and YOKO_LC_VERSION constant must both match tag v$VERSION."
             exit 1
           fi
 
