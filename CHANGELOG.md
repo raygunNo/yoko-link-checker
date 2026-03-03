@@ -1,0 +1,28 @@
+# Changelog
+
+All notable changes to this project will be documented in this file.
+
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+## [1.0.0] - 2026-03-03
+
+### Added
+- Initial release of Yoko Link Checker
+- Content scanning for posts, pages, and custom post types
+- Link validation with HTTP checking
+- Comprehensive status classification (broken, redirect, timeout, etc.)
+- Admin dashboard with scan management
+- Results page with filtering and sorting
+- Auto-scan scheduling via WP-Cron
+- Batch processing for large sites
+- Extensible extractor architecture
+- Clean uninstall with data removal options
+- WordPress Coding Standards compliance
+- PHP 8.0+ support
+- WordPress 6.0+ support
+
+[Unreleased]: https://github.com/Yoko-Co/yoko-link-checker/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/Yoko-Co/yoko-link-checker/releases/tag/v1.0.0

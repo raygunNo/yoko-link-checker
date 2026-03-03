@@ -1,0 +1,101 @@
+<?php
+/**
+ * Plugin Deactivator.
+ *
+ * Handles plugin deactivation: clears scheduled events
+ * and performs cleanup that should happen on deactivation.
+ *
+ * Note: Data is NOT deleted on deactivation.
+ * Use uninstall.php for data removal.
+ *
+ * @package YokoLinkChecker
+ * @since   1.0.0
+ */
+
+declare(strict_types=1);
+
+namespace YokoLinkChecker;
+
+/**
+ * Handles plugin deactivation.
+ *
+ * @since 1.0.0
+ */
+final class Deactivator {
+
+	/**
+	 * Run deactivation routine.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	public static function deactivate(): void {
+		self::clear_scheduled_events();
+		self::cancel_running_scans();
+		self::cleanup_transients();
+	}
+
+	/**
+	 * Clear all scheduled cron events.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	private static function clear_scheduled_events(): void {
+		// Clear any pending scan batch events.
+		wp_clear_scheduled_hook( 'ylc_process_scan_batch' );
+
+		// Clear any scheduled rescans.
+		wp_clear_scheduled_hook( 'ylc_scheduled_scan' );
+	}
+
+	/**
+	 * Cancel any running scans.
+	 *
+	 * Marks running scans as paused so they can be resumed
+	 * after reactivation if desired.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	private static function cancel_running_scans(): void {
+		global $wpdb;
+
+		$table = $wpdb->prefix . 'ylc_scans';
+
+		// Check if table exists before querying.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$table_exists = $wpdb->get_var(
+			$wpdb->prepare( 'SHOW TABLES LIKE %s', $table )
+		);
+
+		if ( $table_exists !== $table ) {
+			return;
+		}
+
+		// Mark running scans as paused.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->update(
+			$table,
+			array(
+				'status'        => 'paused',
+				'error_message' => __( 'Scan paused due to plugin deactivation.', 'yoko-link-checker' ),
+			),
+			array( 'status' => 'running' ),
+			array( '%s', '%s' ),
+			array( '%s' )
+		);
+	}
+
+	/**
+	 * Clean up transients.
+	 *
+	 * @since 1.0.0
+	 * @return void
+	 */
+	private static function cleanup_transients(): void {
+		delete_transient( 'ylc_flush_rewrite' );
+		delete_transient( 'ylc_scan_lock' );
+		delete_transient( 'ylc_rate_limit_state' );
+	}
+}

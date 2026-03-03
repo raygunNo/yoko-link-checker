@@ -1,0 +1,426 @@
+/**
+ * Yoko Link Checker Admin Styles
+ *
+ * @package YokoLinkChecker
+ * @since   1.0.0
+ */
+
+/* ==========================================================================
+   Variables
+   ========================================================================== */
+
+:root {
+	--ylc-color-success: #4caf50;
+	--ylc-color-warning: #ff9800;
+	--ylc-color-error: #f44336;
+	--ylc-color-info: #2196f3;
+	--ylc-color-blocked: #9c27b0;
+	--ylc-color-pending: #9e9e9e;
+	--ylc-color-timeout: #795548;
+	--ylc-border-radius: 4px;
+	--ylc-box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* ==========================================================================
+   Cards
+   ========================================================================== */
+
+.ylc-card {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: var(--ylc-border-radius);
+	padding: 20px;
+	margin-bottom: 20px;
+	box-shadow: var(--ylc-box-shadow);
+}
+
+.ylc-card h2 {
+	margin-top: 0;
+	margin-bottom: 15px;
+	padding-bottom: 10px;
+	border-bottom: 1px solid #eee;
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.ylc-view-all {
+	font-size: 13px;
+	font-weight: normal;
+	text-decoration: none;
+}
+
+/* ==========================================================================
+   Scan Control
+   ========================================================================== */
+
+.ylc-scan-control {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 20px;
+}
+
+.ylc-scan-control h2 {
+	flex: 0 0 100%;
+}
+
+.ylc-scan-status {
+	flex: 1;
+}
+
+.ylc-scanning {
+	display: flex;
+	align-items: center;
+	gap: 15px;
+	flex-wrap: wrap;
+}
+
+.ylc-scanning .spinner {
+	float: none;
+	margin: 0;
+}
+
+.ylc-progress-bar {
+	flex: 1;
+	min-width: 200px;
+	max-width: 400px;
+	height: 20px;
+	background: #e0e0e0;
+	border-radius: 10px;
+	overflow: hidden;
+}
+
+.ylc-progress-fill {
+	height: 100%;
+	background: linear-gradient(90deg, #2271b1, #135e96);
+	transition: width 0.3s ease;
+}
+
+.ylc-progress-text {
+	font-weight: 600;
+}
+
+.ylc-scan-phase {
+	color: #666;
+}
+
+.ylc-scan-actions {
+	display: flex;
+	gap: 10px;
+}
+
+/* ==========================================================================
+   Stats Grid
+   ========================================================================== */
+
+.ylc-stats-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+	gap: 15px;
+	margin-bottom: 20px;
+}
+
+.ylc-stat-card {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: var(--ylc-border-radius);
+	padding: 20px;
+	text-align: center;
+	box-shadow: var(--ylc-box-shadow);
+	position: relative;
+}
+
+.ylc-stat-number {
+	font-size: 32px;
+	font-weight: 600;
+	line-height: 1.2;
+}
+
+.ylc-stat-label {
+	color: #666;
+	font-size: 13px;
+	margin-top: 5px;
+}
+
+.ylc-stat-link {
+	display: block;
+	margin-top: 10px;
+	font-size: 12px;
+	text-decoration: none;
+}
+
+/* Stat card colors */
+.ylc-stat-broken .ylc-stat-number {
+	color: var(--ylc-color-error);
+}
+
+.ylc-stat-warning .ylc-stat-number {
+	color: var(--ylc-color-warning);
+}
+
+.ylc-stat-redirect .ylc-stat-number {
+	color: var(--ylc-color-info);
+}
+
+.ylc-stat-valid .ylc-stat-number {
+	color: var(--ylc-color-success);
+}
+
+.ylc-stat-pending .ylc-stat-number {
+	color: var(--ylc-color-pending);
+}
+
+/* ==========================================================================
+   Status Labels
+   ========================================================================== */
+
+.ylc-status {
+	display: inline-block;
+	padding: 3px 8px;
+	border-radius: 3px;
+	font-size: 12px;
+	font-weight: 500;
+	text-transform: uppercase;
+}
+
+.ylc-status-valid {
+	background: #e8f5e9;
+	color: #2e7d32;
+}
+
+.ylc-status-broken {
+	background: #ffebee;
+	color: #c62828;
+}
+
+.ylc-status-warning {
+	background: #fff3e0;
+	color: #e65100;
+}
+
+.ylc-status-redirect {
+	background: #e3f2fd;
+	color: #1565c0;
+}
+
+.ylc-status-blocked {
+	background: #f3e5f5;
+	color: #7b1fa2;
+}
+
+.ylc-status-timeout {
+	background: #efebe9;
+	color: #4e342e;
+}
+
+.ylc-status-pending {
+	background: #fafafa;
+	color: #616161;
+}
+
+.ylc-status-error {
+	background: #ffebee;
+	color: #c62828;
+}
+
+/* ==========================================================================
+   HTTP Code Labels
+   ========================================================================== */
+
+.ylc-code {
+	display: inline-block;
+	padding: 2px 6px;
+	border-radius: 3px;
+	font-family: monospace;
+	font-size: 12px;
+}
+
+.ylc-code-success {
+	background: #e8f5e9;
+	color: #2e7d32;
+}
+
+.ylc-code-redirect {
+	background: #e3f2fd;
+	color: #1565c0;
+}
+
+.ylc-code-client-error {
+	background: #ffebee;
+	color: #c62828;
+}
+
+.ylc-code-server-error {
+	background: #fce4ec;
+	color: #880e4f;
+}
+
+.ylc-code-unknown {
+	background: #fafafa;
+	color: #9e9e9e;
+}
+
+/* ==========================================================================
+   Ignored Badge
+   ========================================================================== */
+
+.ylc-ignored-badge {
+	display: inline-block;
+	padding: 1px 5px;
+	border-radius: 3px;
+	font-size: 10px;
+	font-weight: 600;
+	text-transform: uppercase;
+	background: #f5f5f5;
+	color: #757575;
+	margin-left: 5px;
+}
+
+/* ==========================================================================
+   Results Page
+   ========================================================================== */
+
+.ylc-results .subsubsub {
+	margin-bottom: 10px;
+}
+
+.ylc-view-post {
+	text-decoration: none;
+	opacity: 0.5;
+}
+
+.ylc-view-post:hover {
+	opacity: 1;
+}
+
+/* ==========================================================================
+   Success/Empty States
+   ========================================================================== */
+
+.ylc-no-broken,
+.ylc-no-data {
+	text-align: center;
+	padding: 40px 20px;
+}
+
+.ylc-success-message {
+	color: var(--ylc-color-success);
+	font-size: 16px;
+}
+
+.ylc-success-message .dashicons {
+	font-size: 24px;
+	width: 24px;
+	height: 24px;
+	vertical-align: middle;
+	margin-right: 10px;
+}
+
+/* ==========================================================================
+   Settings Page
+   ========================================================================== */
+
+.ylc-settings .form-table th {
+	width: 250px;
+}
+
+.ylc-danger-zone {
+	margin-top: 40px;
+	padding: 20px;
+	background: #fff5f5;
+	border: 1px solid #ffcdd2;
+	border-radius: var(--ylc-border-radius);
+}
+
+.ylc-danger-zone h2 {
+	color: var(--ylc-color-error);
+	margin-top: 0;
+}
+
+/* ==========================================================================
+   Modal
+   ========================================================================== */
+
+.ylc-modal {
+	position: fixed;
+	z-index: 100000;
+	left: 0;
+	top: 0;
+	width: 100%;
+	height: 100%;
+	background-color: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.ylc-modal-content {
+	background: #fff;
+	padding: 30px;
+	border-radius: var(--ylc-border-radius);
+	max-width: 500px;
+	width: 90%;
+	position: relative;
+}
+
+.ylc-modal-close {
+	position: absolute;
+	top: 10px;
+	right: 15px;
+	font-size: 24px;
+	cursor: pointer;
+	color: #999;
+}
+
+.ylc-modal-close:hover {
+	color: #333;
+}
+
+.ylc-modal-body {
+	display: flex;
+	align-items: center;
+	gap: 15px;
+}
+
+.ylc-modal-body .spinner {
+	float: none;
+	margin: 0;
+}
+
+/* ==========================================================================
+   Responsive
+   ========================================================================== */
+
+@media screen and (max-width: 782px) {
+	.ylc-stats-grid {
+		grid-template-columns: repeat(2, 1fr);
+	}
+	
+	.ylc-scan-control {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+	
+	.ylc-scan-actions {
+		width: 100%;
+	}
+	
+	.ylc-scan-actions .button {
+		flex: 1;
+	}
+	
+	.ylc-settings .form-table th {
+		width: auto;
+	}
+}
+
+@media screen and (max-width: 480px) {
+	.ylc-stats-grid {
+		grid-template-columns: 1fr;
+	}
+	
+	.ylc-progress-bar {
+		min-width: 100%;
+	}
+}
