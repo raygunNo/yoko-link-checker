@@ -46,7 +46,7 @@ final class Deactivator {
 		wp_clear_scheduled_hook( 'yoko_lc_process_scan_batch' );
 
 		// Clear any scheduled rescans.
-		wp_clear_scheduled_hook( 'yoko_lc_scheduled_scan' );
+		wp_clear_scheduled_hook( 'yoko_lc_auto_scan' );
 	}
 
 	/**
@@ -97,5 +97,12 @@ final class Deactivator {
 		delete_transient( 'yoko_lc_flush_rewrite' );
 		delete_transient( 'yoko_lc_scan_lock' );
 		delete_transient( 'yoko_lc_rate_limit_state' );
+
+		// Clean up batch lock transients (dynamic keys).
+		global $wpdb;
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->query(
+			"DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_yoko_lc_batch_lock_%' OR option_name LIKE '_transient_timeout_yoko_lc_batch_lock_%'"
+		);
 	}
 }

@@ -103,16 +103,6 @@ final class ScanState {
 	}
 
 	/**
-	 * Check if there are more items to process.
-	 *
-	 * @since 1.0.0
-	 * @return bool
-	 */
-	public function has_more(): bool {
-		return ! $this->complete && $this->processed < $this->total;
-	}
-
-	/**
 	 * Create state for discovery phase.
 	 *
 	 * @since 1.0.0

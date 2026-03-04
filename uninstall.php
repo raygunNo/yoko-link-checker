@@ -42,22 +42,24 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	 * Remove options.
 	 */
 	$options = array(
-		'yoko_lc_db_version',
-		'yoko_lc_post_types',
-		'yoko_lc_check_timeout',
+		'yoko_lc_settings',
+		'yoko_lc_schema_version',
+		'yoko_lc_activated_at',
+		'yoko_lc_remove_data_on_uninstall',
 		'yoko_lc_auto_scan_enabled',
 		'yoko_lc_auto_scan_frequency',
-		'yoko_lc_remove_data_on_uninstall',
+		'yoko_lc_post_types',
+		'yoko_lc_check_timeout',
 	);
 
 	foreach ( $options as $option ) {
 		delete_option( $option );
 	}
 
-	// Remove scan cursor options (dynamic keys).
+	// Remove scan cursor and last-activity options (dynamic keys).
 	// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 	$wpdb->query(
-		"DELETE FROM {$wpdb->options} WHERE option_name LIKE 'yoko_lc_scan_%_cursor_%'"
+		"DELETE FROM {$wpdb->options} WHERE option_name LIKE 'yoko_lc_scan_%'"
 	);
 
 	/**

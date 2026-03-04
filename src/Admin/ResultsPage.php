@@ -13,6 +13,7 @@ declare(strict_types=1);
 namespace YokoLinkChecker\Admin;
 
 use YokoLinkChecker\Repository\LinkRepository;
+use YokoLinkChecker\Repository\UrlRepository;
 use YokoLinkChecker\Model\Url;
 
 /**
@@ -30,6 +31,13 @@ class ResultsPage {
 	private LinkRepository $link_repository;
 
 	/**
+	 * URL repository instance.
+	 *
+	 * @var UrlRepository
+	 */
+	private UrlRepository $url_repository;
+
+	/**
 	 * List table instance.
 	 *
 	 * @var LinksListTable|null
@@ -41,9 +49,11 @@ class ResultsPage {
 	 *
 	 * @since 1.0.0
 	 * @param LinkRepository $link_repository Link repository.
+	 * @param UrlRepository  $url_repository  URL repository.
 	 */
-	public function __construct( LinkRepository $link_repository ) {
+	public function __construct( LinkRepository $link_repository, UrlRepository $url_repository ) {
 		$this->link_repository = $link_repository;
+		$this->url_repository  = $url_repository;
 	}
 
 	/**
@@ -95,7 +105,7 @@ class ResultsPage {
 			wp_die( esc_html__( 'Security check failed.', 'yoko-link-checker' ) );
 		}
 
-		if ( ! current_user_can( 'yoko_lc_manage_scans' ) ) {
+		if ( ! current_user_can( 'yoko_lc_manage_scans' ) && ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'Permission denied.', 'yoko-link-checker' ) );
 		}
 
@@ -166,10 +176,19 @@ class ResultsPage {
 	 * @return void
 	 */
 	private function ignore_link( int $link_id ): void {
-		$this->link_repository->update(
-			$link_id,
-			array( 'ignored' => 1 )
-		);
+		$link = $this->link_repository->find( $link_id );
+
+		if ( ! $link ) {
+			return;
+		}
+
+		$result = $this->url_repository->mark_ignored( $link->url_id );
+
+		if ( ! $result ) {
+			$redirect_url = remove_query_arg( array( 'action', 'link_id', '_wpnonce' ) );
+			wp_safe_redirect( add_query_arg( 'ylc_error', 'ignore_failed', $redirect_url ) );
+			exit;
+		}
 
 		/**
 		 * Fires when a link is ignored.
@@ -188,10 +207,19 @@ class ResultsPage {
 	 * @return void
 	 */
 	private function unignore_link( int $link_id ): void {
-		$this->link_repository->update(
-			$link_id,
-			array( 'ignored' => 0 )
-		);
+		$link = $this->link_repository->find( $link_id );
+
+		if ( ! $link ) {
+			return;
+		}
+
+		$result = $this->url_repository->unmark_ignored( $link->url_id );
+
+		if ( ! $result ) {
+			$redirect_url = remove_query_arg( array( 'action', 'link_id', '_wpnonce' ) );
+			wp_safe_redirect( add_query_arg( 'ylc_error', 'unignore_failed', $redirect_url ) );
+			exit;
+		}
 
 		/**
 		 * Fires when a link is unignored.
@@ -203,9 +231,10 @@ class ResultsPage {
 	}
 
 	/**
-	 * Handle CSV export.
+	 * Handle CSV export using streaming for constant memory usage.
 	 *
 	 * @since 1.0.3
+	 * @since 1.0.9 Switched to streaming generator for memory efficiency.
 	 * @return void
 	 */
 	public function handle_export(): void {
@@ -215,12 +244,9 @@ class ResultsPage {
 			wp_die( esc_html__( 'Security check failed.', 'yoko-link-checker' ) );
 		}
 
-		if ( ! current_user_can( 'yoko_lc_view_results' ) ) {
+		if ( ! current_user_can( 'yoko_lc_view_results' ) && ! current_user_can( 'manage_options' ) ) {
 			wp_die( esc_html__( 'Permission denied.', 'yoko-link-checker' ) );
 		}
-
-		// Get all links for export.
-		$links = $this->link_repository->get_all_for_export();
 
 		// Set headers for CSV download.
 		$filename = 'yoko-link-checker-export-' . gmdate( 'Y-m-d-His' ) . '.csv';
@@ -229,7 +255,14 @@ class ResultsPage {
 		header( 'Pragma: no-cache' );
 		header( 'Expires: 0' );
 
+		// Disable output buffering to stream directly to the client.
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- ob_end_clean may warn if no buffer active.
+		while ( @ob_end_clean() ) {
+			// Clear all output buffers.
+		}
+
 		// Create output stream.
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- Using php://output for streaming CSV.
 		$output = fopen( 'php://output', 'w' );
 
 		// Write UTF-8 BOM for Excel compatibility.
@@ -251,8 +284,9 @@ class ResultsPage {
 			)
 		);
 
-		// Write data rows.
-		foreach ( $links as $link ) {
+		// Stream data rows from the generator -- constant memory regardless of dataset size.
+		$row_count = 0;
+		foreach ( $this->link_repository->stream_for_export() as $link ) {
 			fputcsv(
 				$output,
 				array(
@@ -267,7 +301,16 @@ class ResultsPage {
 					$link->last_checked ?? '',
 				)
 			);
+
+			if ( ++$row_count % 500 === 0 ) {
+				// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fflush
+				fflush( $output );
+			}
 		}
+
+		// Final flush to ensure all remaining rows are written.
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fflush
+		fflush( $output );
 
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Using php://output stream for CSV export.
 		fclose( $output );

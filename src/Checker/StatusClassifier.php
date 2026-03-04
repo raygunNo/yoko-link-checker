@@ -299,25 +299,4 @@ final class StatusClassifier {
 		}
 	}
 
-	/**
-	 * Get a CSS class for a status.
-	 *
-	 * @since 1.0.0
-	 * @param string $status Status.
-	 * @return string CSS class.
-	 */
-	public function get_status_class( string $status ): string {
-		$classes = array(
-			Url::STATUS_VALID    => 'ylc-status-valid',
-			Url::STATUS_REDIRECT => 'ylc-status-redirect',
-			Url::STATUS_BROKEN   => 'ylc-status-broken',
-			Url::STATUS_WARNING  => 'ylc-status-warning',
-			Url::STATUS_BLOCKED  => 'ylc-status-blocked',
-			Url::STATUS_TIMEOUT  => 'ylc-status-timeout',
-			Url::STATUS_ERROR    => 'ylc-status-error',
-			Url::STATUS_PENDING  => 'ylc-status-pending',
-		);
-
-		return $classes[ $status ] ?? 'ylc-status-unknown';
-	}
 }

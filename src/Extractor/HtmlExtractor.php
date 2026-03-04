@@ -62,16 +62,6 @@ final class HtmlExtractor implements ExtractorInterface {
 	}
 
 	/**
-	 * Get extractor name.
-	 *
-	 * @since 1.0.0
-	 * @return string
-	 */
-	public function get_name(): string {
-		return __( 'HTML Content', 'yoko-link-checker' );
-	}
-
-	/**
 	 * Check if extractor supports the post.
 	 *
 	 * @since 1.0.0
@@ -81,16 +71,6 @@ final class HtmlExtractor implements ExtractorInterface {
 	public function supports( WP_Post $post ): bool {
 		// Support all posts with content.
 		return ! empty( $post->post_content );
-	}
-
-	/**
-	 * Get processed fields.
-	 *
-	 * @since 1.0.0
-	 * @return array<string>
-	 */
-	public function get_fields(): array {
-		return array( 'post_content' );
 	}
 
 	/**

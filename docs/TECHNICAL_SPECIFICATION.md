@@ -135,8 +135,7 @@ yoko-link-checker/
 │   │   └── ScanState.php         # Progress tracking
 │   └── Util/                # Utilities
 │       ├── Logger.php            # Debug logging
-│       ├── UrlNormalizer.php     # URL canonicalization
-│       └── UrlValidator.php      # URL validation rules
+│       └── UrlNormalizer.php     # URL canonicalization
 ├── templates/admin/         # PHP view templates
 ├── assets/{css,js}/         # Admin assets
 └── docs/                    # Documentation

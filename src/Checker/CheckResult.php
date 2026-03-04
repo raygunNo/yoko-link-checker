@@ -119,46 +119,6 @@ final class CheckResult {
 	}
 
 	/**
-	 * Create a success result.
-	 *
-	 * @since 1.0.0
-	 * @param string                $url           Checked URL.
-	 * @param int                   $http_code     HTTP code.
-	 * @param string|null           $final_url     Final URL.
-	 * @param int                   $redirect_count Redirects.
-	 * @param int                   $response_time Response time.
-	 * @param array<string, string> $headers Headers.
-	 * @return self
-	 */
-	public static function success(
-		string $url,
-		int $http_code,
-		?string $final_url = null,
-		int $redirect_count = 0,
-		int $response_time = 0,
-		array $headers = array()
-	): self {
-		$status = 'valid';
-
-		// Mark as redirect if URL changed.
-		if ( $final_url && $final_url !== $url ) {
-			$status = 'redirect';
-		}
-
-		return new self(
-			$url,
-			$status,
-			$http_code,
-			$final_url,
-			$redirect_count,
-			$response_time,
-			null,
-			null,
-			$headers
-		);
-	}
-
-	/**
 	 * Create an error result.
 	 *
 	 * @since 1.0.0
@@ -190,55 +150,4 @@ final class CheckResult {
 		);
 	}
 
-	/**
-	 * Check if result is valid (no problems).
-	 *
-	 * @since 1.0.0
-	 * @return bool
-	 */
-	public function is_valid(): bool {
-		return 'valid' === $this->status;
-	}
-
-	/**
-	 * Check if result is a redirect.
-	 *
-	 * @since 1.0.0
-	 * @return bool
-	 */
-	public function is_redirect(): bool {
-		return 'redirect' === $this->status;
-	}
-
-	/**
-	 * Check if result indicates a problem.
-	 *
-	 * @since 1.0.0
-	 * @return bool
-	 */
-	public function has_problem(): bool {
-		return in_array(
-			$this->status,
-			array( 'broken', 'warning', 'blocked', 'timeout', 'error' ),
-			true
-		);
-	}
-
-	/**
-	 * Get a summary string for the result.
-	 *
-	 * @since 1.0.0
-	 * @return string
-	 */
-	public function get_summary(): string {
-		if ( $this->error_message ) {
-			return $this->error_message;
-		}
-
-		if ( $this->http_code ) {
-			return sprintf( 'HTTP %d', $this->http_code );
-		}
-
-		return $this->status;
-	}
 }

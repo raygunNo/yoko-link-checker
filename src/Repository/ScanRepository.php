@@ -187,9 +187,9 @@ final class ScanRepository {
 	 * @since 1.0.0
 	 * @param string               $scan_type Scan type (full/incremental/recheck).
 	 * @param array<string, mixed> $options   Scan options.
-	 * @return Scan
+	 * @return Scan|null Scan entity, or null on failure.
 	 */
-	public function create( string $scan_type = Scan::TYPE_FULL, array $options = array() ): Scan {
+	public function create( string $scan_type = Scan::TYPE_FULL, array $options = array() ): ?Scan {
 		$scan            = new Scan();
 		$scan->scan_type = $scan_type;
 		$scan->status    = Scan::STATUS_PENDING;
@@ -203,19 +203,23 @@ final class ScanRepository {
 	 *
 	 * @since 1.0.0
 	 * @param Scan $scan Scan entity.
-	 * @return Scan Scan with ID populated.
+	 * @return Scan|null Scan with ID populated, or null on failure.
 	 */
-	public function insert( Scan $scan ): Scan {
+	public function insert( Scan $scan ): ?Scan {
 		global $wpdb;
 
 		$data = $scan->to_row();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->insert(
+		$result = $wpdb->insert(
 			$this->table,
 			$data,
 			$this->get_format( $data )
 		);
+
+		if ( false === $result ) {
+			return null;
+		}
 
 		$scan->id = (int) $wpdb->insert_id;
 

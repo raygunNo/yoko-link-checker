@@ -27,7 +27,7 @@ final class Activator {
 	 *
 	 * @var string
 	 */
-	public const SCHEMA_VERSION = '1.0.0';
+	public const SCHEMA_VERSION = '1.1.0';
 
 	/**
 	 * Option key for tracking installed schema version.
@@ -94,13 +94,14 @@ final class Activator {
 			next_check DATETIME DEFAULT NULL,
 			is_ignored TINYINT(1) NOT NULL DEFAULT 0,
 			ignore_reason VARCHAR(255) DEFAULT NULL,
-			PRIMARY KEY (id),
+			PRIMARY KEY  (id),
 			UNIQUE KEY url_hash (url_hash),
 			KEY status (status),
 			KEY is_internal (is_internal),
 			KEY next_check (next_check),
 			KEY is_ignored (is_ignored),
-			KEY status_ignored (status, is_ignored)
+			KEY status_ignored (status, is_ignored),
+			KEY status_ignored_id (status, is_ignored, id)
 		) {$charset_collate};";
 
 		// SQL for yoko_lc_links table.
@@ -116,7 +117,7 @@ final class Activator {
 			link_position INT UNSIGNED DEFAULT NULL,
 			created_at DATETIME NOT NULL,
 			updated_at DATETIME NOT NULL,
-			PRIMARY KEY (id),
+			PRIMARY KEY  (id),
 			KEY url_id (url_id),
 			KEY source_id (source_id),
 			KEY source_type (source_type),
@@ -140,7 +141,7 @@ final class Activator {
 			current_phase VARCHAR(30) DEFAULT 'discovery',
 			error_message TEXT DEFAULT NULL,
 			options TEXT DEFAULT NULL,
-			PRIMARY KEY (id),
+			PRIMARY KEY  (id),
 			KEY status (status),
 			KEY scan_type (scan_type)
 		) {$charset_collate};";
@@ -162,39 +163,20 @@ final class Activator {
 	 * @return void
 	 */
 	private static function set_default_options(): void {
-		$defaults = array(
-			'yoko_lc_settings' => array(
-				// Scan settings.
-				'post_types'            => array( 'post', 'page' ),
-				'post_statuses'         => array( 'publish' ),
-				'batch_size_posts'      => 50,
-				'batch_size_urls'       => 20,
+		if ( false === get_option( 'yoko_lc_post_types' ) ) {
+			add_option( 'yoko_lc_post_types', array( 'post', 'page' ) );
+		}
 
-				// HTTP settings.
-				'request_timeout'       => 15,
-				'max_redirects'         => 5,
-				'user_agent'            => 'YokoLinkChecker/' . YOKO_LC_VERSION . ' (WordPress Link Checker)',
-				'verify_ssl'            => true,
+		if ( false === get_option( 'yoko_lc_check_timeout' ) ) {
+			add_option( 'yoko_lc_check_timeout', 30 );
+		}
 
-				// Rate limiting.
-				'rate_limit_per_domain' => 2, // Requests per second per domain.
-				'rate_limit_global'     => 10, // Total requests per second.
+		if ( false === get_option( 'yoko_lc_auto_scan_enabled' ) ) {
+			add_option( 'yoko_lc_auto_scan_enabled', false );
+		}
 
-				// Recheck settings.
-				'recheck_valid_days'    => 30,
-				'recheck_warning_days'  => 7,
-				'recheck_broken_days'   => 3,
-
-				// Scan triggers.
-				'scan_on_publish'       => false,
-				'scan_on_update'        => false,
-			),
-		);
-
-		foreach ( $defaults as $option_name => $default_value ) {
-			if ( false === get_option( $option_name ) ) {
-				add_option( $option_name, $default_value );
-			}
+		if ( false === get_option( 'yoko_lc_auto_scan_frequency' ) ) {
+			add_option( 'yoko_lc_auto_scan_frequency', 'weekly' );
 		}
 	}
 
@@ -205,20 +187,6 @@ final class Activator {
 	 * @return void
 	 */
 	private static function schedule_cron_events(): void {
-		// Register custom cron schedules if needed.
-		// phpcs:disable WordPress.WP.CronInterval.CronSchedulesInterval -- 5-minute interval is intentional for link checking.
-		add_filter(
-			'cron_schedules',
-			function ( array $schedules ): array {
-				$schedules['yoko_lc_five_minutes'] = array(
-					'interval' => 300,
-					'display'  => __( 'Every Five Minutes', 'yoko-link-checker' ),
-				);
-				return $schedules;
-			}
-		);
-		// phpcs:enable WordPress.WP.CronInterval.CronSchedulesInterval
-
 		// Note: We don't auto-schedule scans.
 		// Scans are user-initiated in the MVP.
 		// Future: Add scheduled scan option.

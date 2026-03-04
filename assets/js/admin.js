@@ -16,9 +16,14 @@
 	const POLL_INTERVAL = 3000;
 
 	/**
-	 * Current polling timer.
+	 * Current polling interval ID.
 	 */
-	let pollTimer = null;
+	let pollIntervalId = null;
+
+	/**
+	 * Whether a poll request is currently in flight.
+	 */
+	let isPolling = false;
 
 	/**
 	 * Initialize the admin scripts.
@@ -41,6 +46,7 @@
 		// Link actions
 		$(document).on('click', '.ylc-recheck-url', handleRecheckUrl);
 		$(document).on('click', '.ylc-ignore-link', handleIgnoreLink);
+		$(document).on('click', '.ylc-unignore-link', handleUnignoreLink);
 
 		// Data management
 		$(document).on('click', '.ylc-clear-data', handleClearData);
@@ -51,6 +57,11 @@
 			if (e.target === this) {
 				closeModal();
 			}
+		});
+
+		// Clear polling timer on page unload.
+		$(window).on('beforeunload', function() {
+			stopPolling();
 		});
 	}
 
@@ -68,27 +79,34 @@
 	 * Start status polling.
 	 */
 	function startPolling() {
-		if (pollTimer) {
+		if (pollIntervalId) {
 			return;
 		}
 
-		pollTimer = setInterval(pollStatus, POLL_INTERVAL);
+		pollIntervalId = setInterval(pollStatus, POLL_INTERVAL);
 	}
 
 	/**
 	 * Stop status polling.
 	 */
 	function stopPolling() {
-		if (pollTimer) {
-			clearInterval(pollTimer);
-			pollTimer = null;
+		if (pollIntervalId) {
+			clearInterval(pollIntervalId);
+			pollIntervalId = null;
 		}
+		isPolling = false;
 	}
 
 	/**
 	 * Poll for scan status.
 	 */
 	function pollStatus() {
+		if (isPolling) {
+			return;
+		}
+
+		isPolling = true;
+
 		$.ajax({
 			url: ylcAdmin.ajaxUrl,
 			type: 'POST',
@@ -97,9 +115,12 @@
 				nonce: ylcAdmin.nonce
 			},
 			success: function(response) {
-				if (response.success) {
+				if (response && response.success && response.data) {
 					updateScanStatus(response.data);
 				}
+			},
+			complete: function() {
+				isPolling = false;
 			}
 		});
 	}
@@ -126,9 +147,20 @@
 			const $progressText = $('.ylc-progress-text');
 			const $scanPhase = $('.ylc-scan-phase');
 
-			$progressFill.css('width', data.progress + '%');
-			$progressText.text(Math.round(data.progress * 10) / 10 + '%');
-			$scanPhase.text('Phase: ' + capitalizeFirst(data.status.phase));
+			if (typeof data.progress !== 'undefined') {
+				var progress = parseFloat(data.progress);
+				if (isNaN(progress) || progress < 0) {
+					progress = 0;
+				} else if (progress > 100) {
+					progress = 100;
+				}
+				$progressFill.css('width', progress + '%');
+				$progressText.text(Math.round(progress * 10) / 10 + '%');
+			}
+
+			if (data.status && data.status.phase) {
+				$scanPhase.text(ylcAdmin.strings.phase + ' ' + capitalizeFirst(data.status.phase));
+			}
 		}
 	}
 
@@ -155,16 +187,16 @@
 				nonce: ylcAdmin.nonce
 			},
 			success: function(response) {
-				if (response.success) {
-					location.reload();
-				} else {
-					alert((response.data && response.data.message) || ylcAdmin.strings.error);
-					$button.prop('disabled', false).text('Start New Scan');
+				if (!response || !response.success) {
+					alert((response && response.data && response.data.message) || ylcAdmin.strings.error);
+					$button.prop('disabled', false).text(ylcAdmin.strings.startNewScan);
+					return;
 				}
+				location.reload();
 			},
 			error: function() {
 				alert(ylcAdmin.strings.error);
-				$button.prop('disabled', false).text('Start New Scan');
+				$button.prop('disabled', false).text(ylcAdmin.strings.startNewScan);
 			}
 		});
 	}
@@ -191,13 +223,13 @@
 				nonce: ylcAdmin.nonce
 			},
 			success: function(response) {
-				if (response.success) {
-					stopPolling();
-					location.reload();
-				} else {
-					alert((response.data && response.data.message) || ylcAdmin.strings.error);
+				if (!response || !response.success) {
+					alert((response && response.data && response.data.message) || ylcAdmin.strings.error);
 					$button.prop('disabled', false);
+					return;
 				}
+				stopPolling();
+				location.reload();
 			},
 			error: function() {
 				alert(ylcAdmin.strings.error);
@@ -228,12 +260,12 @@
 				nonce: ylcAdmin.nonce
 			},
 			success: function(response) {
-				if (response.success) {
-					location.reload();
-				} else {
-					alert((response.data && response.data.message) || ylcAdmin.strings.error);
+				if (!response || !response.success) {
+					alert((response && response.data && response.data.message) || ylcAdmin.strings.error);
 					$button.prop('disabled', false);
+					return;
 				}
+				location.reload();
 			},
 			error: function() {
 				alert(ylcAdmin.strings.error);
@@ -268,13 +300,13 @@
 				nonce: ylcAdmin.nonce
 			},
 			success: function(response) {
-				if (response.success) {
-					stopPolling();
-					location.reload();
-				} else {
-					alert((response.data && response.data.message) || ylcAdmin.strings.error);
+				if (!response || !response.success) {
+					alert((response && response.data && response.data.message) || ylcAdmin.strings.error);
 					$button.prop('disabled', false);
+					return;
 				}
+				stopPolling();
+				location.reload();
 			},
 			error: function() {
 				alert(ylcAdmin.strings.error);
@@ -310,17 +342,24 @@
 			},
 			success: function(response) {
 				closeModal();
-				if (response.success && response.data.url) {
-					// Update row status
-					const $statusCell = $row.find('.ylc-status');
-					$statusCell
-						.removeClass()
-						.addClass('ylc-status ylc-status-' + response.data.url.status)
-						.text(capitalizeFirst(response.data.url.status));
 
-					const $codeCell = $row.find('.ylc-code');
-					$codeCell.text(response.data.url.http_code || '—');
+				if (!response || !response.success || !response.data || !response.data.url) {
+					alert((response && response.data && response.data.message) || ylcAdmin.strings.error);
+					return;
 				}
+
+				// Update row status using .text() to prevent DOM injection.
+				var urlData = response.data.url;
+				var allowedStatuses = ['ok', 'broken', 'warning', 'ignored', 'error', 'redirect', 'pending', 'valid'];
+				var safeStatus = allowedStatuses.indexOf(urlData.status) !== -1 ? urlData.status : 'unknown';
+				var $statusCell = $row.find('.ylc-status');
+				$statusCell
+					.removeClass()
+					.addClass('ylc-status ylc-status-' + safeStatus)
+					.text(capitalizeFirst(safeStatus));
+
+				var $codeCell = $row.find('.ylc-code');
+				$codeCell.text(urlData.http_code || '\u2014');
 			},
 			error: function() {
 				closeModal();
@@ -354,13 +393,45 @@
 				nonce: ylcAdmin.nonce
 			},
 			success: function(response) {
-				if (response.success) {
-					$row.fadeOut(function() {
-						$(this).remove();
-					});
-				} else {
-					alert((response.data && response.data.message) || ylcAdmin.strings.error);
+				if (!response || !response.success) {
+					alert((response && response.data && response.data.message) || ylcAdmin.strings.error);
+					return;
 				}
+				$row.fadeOut(function() {
+					$(this).remove();
+				});
+			},
+			error: function() {
+				alert(ylcAdmin.strings.error);
+			}
+		});
+	}
+
+	/**
+	 * Handle unignore link click.
+	 *
+	 * @param {Event} e Click event.
+	 */
+	function handleUnignoreLink(e) {
+		e.preventDefault();
+
+		var $button = $(this);
+		var linkId = $button.data('link-id');
+
+		$.ajax({
+			url: ylcAdmin.ajaxUrl,
+			type: 'POST',
+			data: {
+				action: 'yoko_lc_unignore_link',
+				link_id: linkId,
+				nonce: ylcAdmin.nonce
+			},
+			success: function(response) {
+				if (!response || !response.success) {
+					alert((response && response.data && response.data.message) || ylcAdmin.strings.error);
+					return;
+				}
+				location.reload();
 			},
 			error: function() {
 				alert(ylcAdmin.strings.error);
@@ -383,12 +454,12 @@
 	function handleClearData(e) {
 		e.preventDefault();
 
-		if (!confirm(ylcAdmin.strings.confirmClear || 'Are you sure you want to delete all scan data? This cannot be undone.')) {
+		if (!confirm(ylcAdmin.strings.confirmClear)) {
 			return;
 		}
 
 		const $button = $(this);
-		$button.prop('disabled', true).text(ylcAdmin.strings.clearing || 'Clearing...');
+		$button.prop('disabled', true).text(ylcAdmin.strings.clearing);
 
 		$.ajax({
 			url: ylcAdmin.ajaxUrl,
@@ -398,17 +469,17 @@
 				nonce: ylcAdmin.nonce
 			},
 			success: function(response) {
-				if (response.success) {
-					alert(response.data.message || 'All data cleared.');
-					location.reload();
-				} else {
-					alert((response.data && response.data.message) || ylcAdmin.strings.error);
-					$button.prop('disabled', false).text(ylcAdmin.strings.clearData || 'Clear All Scan Data');
+				if (!response || !response.success) {
+					alert((response && response.data && response.data.message) || ylcAdmin.strings.error);
+					$button.prop('disabled', false).text(ylcAdmin.strings.clearData);
+					return;
 				}
+				alert((response.data && response.data.message) || ylcAdmin.strings.dataCleared);
+				location.reload();
 			},
 			error: function() {
 				alert(ylcAdmin.strings.error);
-				$button.prop('disabled', false).text(ylcAdmin.strings.clearData || 'Clear All Scan Data');
+				$button.prop('disabled', false).text(ylcAdmin.strings.clearData);
 			}
 		});
 	}

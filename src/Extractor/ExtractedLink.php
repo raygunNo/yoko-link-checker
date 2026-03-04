@@ -25,9 +25,6 @@ final class ExtractedLink {
 	 */
 	public const TYPE_ANCHOR = 'anchor';
 	public const TYPE_IMAGE  = 'image';
-	public const TYPE_SCRIPT = 'script';
-	public const TYPE_STYLE  = 'style';
-	public const TYPE_OTHER  = 'other';
 
 	/**
 	 * The raw URL as extracted.
@@ -167,85 +164,15 @@ final class ExtractedLink {
 	}
 
 	/**
-	 * Check if this is an anchor link.
-	 *
-	 * @since 1.0.0
-	 * @return bool
-	 */
-	public function is_anchor(): bool {
-		return self::TYPE_ANCHOR === $this->type;
-	}
-
-	/**
-	 * Check if this is an image.
-	 *
-	 * @since 1.0.0
-	 * @return bool
-	 */
-	public function is_image(): bool {
-		return self::TYPE_IMAGE === $this->type;
-	}
-
-	/**
-	 * Get truncated text.
-	 *
-	 * @since 1.0.0
-	 * @param int $max_length Maximum length.
-	 * @return string
-	 */
-	public function get_truncated_text( int $max_length = 100 ): string {
-		if ( null === $this->text ) {
-			return '';
-		}
-
-		$text = trim( $this->text );
-
-		if ( mb_strlen( $text ) <= $max_length ) {
-			return $text;
-		}
-
-		return mb_substr( $text, 0, $max_length ) . '...';
-	}
-
-	/**
 	 * Check if URL looks valid for processing.
+	 *
+	 * Performs a lightweight check for empty/whitespace URLs.
+	 * The normalizer handles scheme-based skipping downstream.
 	 *
 	 * @since 1.0.0
 	 * @return bool
 	 */
 	public function has_processable_url(): bool {
-		$url = trim( $this->url );
-
-		// Skip empty.
-		if ( '' === $url ) {
-			return false;
-		}
-
-		// Skip fragments only.
-		if ( str_starts_with( $url, '#' ) ) {
-			return false;
-		}
-
-		// Skip javascript.
-		if ( str_starts_with( strtolower( $url ), 'javascript:' ) ) {
-			return false;
-		}
-
-		// Skip mailto.
-		if ( str_starts_with( strtolower( $url ), 'mailto:' ) ) {
-			return false;
-		}
-
-		// Skip tel.
-		if ( str_starts_with( strtolower( $url ), 'tel:' ) ) {
-			return false;
-		}
-
-		// Skip data URIs.
-		if ( str_starts_with( strtolower( $url ), 'data:' ) ) {
-			return false;
-		}
-
-		return true;
+		return '' !== trim( $this->url );
 	}
 }

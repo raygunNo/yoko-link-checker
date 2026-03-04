@@ -160,6 +160,12 @@ class LinksListTable extends WP_List_Table {
 		// Get items.
 		$this->items = $this->link_repository->get_links_with_urls( $args );
 
+		// Prime post caches to avoid N+1 get_post() calls in column_source().
+		$post_ids = wp_list_pluck( $this->items, 'post_id' );
+		if ( ! empty( $post_ids ) ) {
+			_prime_post_caches( array_unique( array_filter( array_map( 'intval', $post_ids ) ) ), true, false );
+		}
+
 		// Get total count.
 		$total_items = $this->link_repository->count_links_with_status( $args['status'] ?? null );
 

@@ -17,10 +17,12 @@ use YokoLinkChecker\Extractor\ExtractorRegistry;
 use YokoLinkChecker\Repository\UrlRepository;
 use YokoLinkChecker\Repository\LinkRepository;
 use YokoLinkChecker\Repository\ScanRepository;
+use YokoLinkChecker\Checker\StatusClassifier;
 use YokoLinkChecker\Checker\UrlChecker;
 use YokoLinkChecker\Model\Link;
 use YokoLinkChecker\Model\Scan;
 use YokoLinkChecker\Model\Url;
+use YokoLinkChecker\Util\Logger;
 use WP_Post;
 
 /**
@@ -73,6 +75,13 @@ class BatchProcessor {
 	private UrlChecker $url_checker;
 
 	/**
+	 * Status classifier instance.
+	 *
+	 * @var StatusClassifier
+	 */
+	private StatusClassifier $classifier;
+
+	/**
 	 * Constructor.
 	 *
 	 * @since 1.0.0
@@ -82,6 +91,7 @@ class BatchProcessor {
 	 * @param LinkRepository    $link_repository    Link repository instance.
 	 * @param ScanRepository    $scan_repository    Scan repository instance.
 	 * @param UrlChecker        $url_checker        URL checker instance.
+	 * @param StatusClassifier  $classifier         Status classifier instance.
 	 */
 	public function __construct(
 		ContentDiscovery $content_discovery,
@@ -89,7 +99,8 @@ class BatchProcessor {
 		UrlRepository $url_repository,
 		LinkRepository $link_repository,
 		ScanRepository $scan_repository,
-		UrlChecker $url_checker
+		UrlChecker $url_checker,
+		StatusClassifier $classifier
 	) {
 		$this->content_discovery  = $content_discovery;
 		$this->extractor_registry = $extractor_registry;
@@ -97,6 +108,7 @@ class BatchProcessor {
 		$this->link_repository    = $link_repository;
 		$this->scan_repository    = $scan_repository;
 		$this->url_checker        = $url_checker;
+		$this->classifier         = $classifier;
 	}
 
 	/**
@@ -109,19 +121,13 @@ class BatchProcessor {
 	 * @return ScanState Current state after processing.
 	 */
 	public function process_discovery_batch( int $scan_id, int $after_id = 0, int $batch_size = 50 ): ScanState {
-		if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( "[YLC Debug] process_discovery_batch - scan_id: $scan_id, after_id: $after_id, batch_size: $batch_size" );
-		}
+		Logger::debug( 'process_discovery_batch', array( 'scan_id' => $scan_id, 'after_id' => $after_id, 'batch_size' => $batch_size ) );
 
 		$posts       = $this->content_discovery->get_batch( $after_id, $batch_size );
 		$total_posts = $this->content_discovery->count_posts();
 		$last_id     = $after_id;
 
-		if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( '[YLC Debug] process_discovery_batch - Got ' . count( $posts ) . " posts, total_posts: $total_posts" );
-		}
+		Logger::debug( 'process_discovery_batch - got posts', array( 'count' => count( $posts ), 'total_posts' => $total_posts ) );
 
 		foreach ( $posts as $post ) {
 			$this->process_post( $scan_id, $post );
@@ -131,19 +137,13 @@ class BatchProcessor {
 		$processed_count = count( $posts );
 		$complete        = $processed_count < $batch_size;
 
-		if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( "[YLC Debug] process_discovery_batch - processed_count: $processed_count, complete: " . ( $complete ? 'yes' : 'no' ) );
-		}
+		Logger::debug( 'process_discovery_batch - results', array( 'processed_count' => $processed_count, 'complete' => $complete ) );
 
 		// Update scan state.
 		$scan = $this->scan_repository->find( $scan_id );
 		if ( $scan ) {
 			$new_processed = $scan->processed_posts + $processed_count;
-			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( "[YLC Debug] process_discovery_batch - Updating progress: new_processed=$new_processed" );
-			}
+			Logger::debug( 'process_discovery_batch - updating progress', array( 'new_processed' => $new_processed ) );
 			$this->scan_repository->update_progress(
 				$scan,
 				Scan::PHASE_DISCOVERY,
@@ -254,34 +254,89 @@ class BatchProcessor {
 	 */
 	public function process_checking_batch( int $scan_id, int $after_id = 0, int $batch_size = 10 ): ScanState {
 		$urls       = $this->url_repository->get_pending( $batch_size, $after_id );
-		$total_urls = $this->url_repository->count_by_status( Url::STATUS_PENDING );
+		$total_urls = $this->url_repository->count( Url::STATUS_PENDING );
 		$last_id    = $after_id;
 
-		$actual_checked = 0;
+		// Separate URLs into external and internal arrays.
+		$external_urls = array();
+		$internal_urls = array();
 		foreach ( $urls as $url ) {
+			if ( $url->is_internal ) {
+				$internal_urls[] = $url;
+			} else {
+				$external_urls[ $url->url ] = $url;
+			}
+		}
+
+		$actual_checked = 0;
+
+		// Process external URLs in parallel via check_batch().
+		if ( ! empty( $external_urls ) ) {
+			$url_strings = array_keys( $external_urls );
+			$results     = $this->url_checker->check_batch( $url_strings );
+
+			if ( is_array( $results ) && ! empty( $results ) ) {
+				foreach ( $external_urls as $url_string => $url ) {
+					if ( isset( $results[ $url_string ] ) ) {
+						$result = $results[ $url_string ];
+
+						$url->status         = $result->status;
+						$url->http_code      = $result->http_code;
+						$url->final_url      = $result->final_url;
+						$url->redirect_count = $result->redirect_count;
+						$url->response_time  = $result->response_time;
+						$url->error_type     = $result->error_type;
+						$url->error_message  = $result->error_message;
+						$url->last_checked   = current_time( 'mysql', true );
+						$url->check_count    = ( $url->check_count ?? 0 ) + 1;
+
+						try {
+							$this->url_repository->update( $url );
+							++$actual_checked;
+
+							/** This action is documented in BatchProcessor::check_url() */
+							do_action( 'yoko_lc_url_checked', $url, $result );
+						} catch ( \Throwable $e ) {
+							Logger::error( 'Failed to update URL after parallel check', array( 'url_id' => $url->id, 'error' => $e->getMessage() ) );
+						}
+					} else {
+						// No result for this URL; fall back to sequential check.
+						try {
+							$this->check_url( $url );
+							++$actual_checked;
+						} catch ( \Throwable $e ) {
+							Logger::error( 'URL check failed', array( 'url_id' => $url->id, 'error' => $e->getMessage() ) );
+							$this->mark_url_error( $url, $e->getMessage() );
+							++$actual_checked;
+						}
+					}
+					$last_id = $url->id;
+				}
+			} else {
+				// Parallel failed entirely, fall back to sequential.
+				foreach ( $external_urls as $url ) {
+					try {
+						$this->check_url( $url );
+						++$actual_checked;
+					} catch ( \Throwable $e ) {
+						Logger::error( 'URL check failed', array( 'url_id' => $url->id, 'error' => $e->getMessage() ) );
+						$this->mark_url_error( $url, $e->getMessage() );
+						++$actual_checked;
+					}
+					$last_id = $url->id;
+				}
+			}
+		}
+
+		// Process internal URLs sequentially (they use WordPress functions).
+		foreach ( $internal_urls as $url ) {
 			try {
 				$this->check_url( $url );
 				++$actual_checked;
 			} catch ( \Throwable $e ) {
-				// Log error but continue with other URLs.
-				if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( '[YLC] URL check failed for ID ' . $url->id . ': ' . $e->getMessage() );
-				}
-				// Mark as error so we don't retry immediately.
-				$url->status        = Url::STATUS_ERROR;
-				$url->error_message = substr( $e->getMessage(), 0, 255 );
-				$url->last_checked  = current_time( 'mysql' );
-				$url->check_count   = ( $url->check_count ?? 0 ) + 1;
-				try {
-					$this->url_repository->update( $url );
-					++$actual_checked;
-				} catch ( \Throwable $update_error ) {
-					if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-						error_log( '[YLC] Failed to update URL ' . $url->id . ': ' . $update_error->getMessage() );
-					}
-				}
+				Logger::error( 'URL check failed', array( 'url_id' => $url->id, 'error' => $e->getMessage() ) );
+				$this->mark_url_error( $url, $e->getMessage() );
+				++$actual_checked;
 			}
 			$last_id = $url->id;
 		}
@@ -362,6 +417,30 @@ class BatchProcessor {
 		 * @param \YokoLinkChecker\Checker\CheckResult $result Check result.
 		 */
 		do_action( 'yoko_lc_url_checked', $url, $result );
+	}
+
+	/**
+	 * Mark a URL as errored when an exception is caught during checking.
+	 *
+	 * Centralises the error-marking logic so that both sequential and parallel
+	 * fallback paths handle failures consistently.
+	 *
+	 * @since 1.0.9
+	 * @param Url    $url           URL model.
+	 * @param string $error_message Error message from the exception.
+	 * @return void
+	 */
+	private function mark_url_error( Url $url, string $error_message ): void {
+		$url->status        = Url::STATUS_ERROR;
+		$url->error_message = substr( $error_message, 0, 255 );
+		$url->last_checked  = current_time( 'mysql', true );
+		$url->check_count   = ( $url->check_count ?? 0 ) + 1;
+
+		try {
+			$this->url_repository->update( $url );
+		} catch ( \Throwable $update_error ) {
+			Logger::error( 'Failed to update URL after error', array( 'url_id' => $url->id, 'error' => $update_error->getMessage() ) );
+		}
 	}
 
 	/**
@@ -451,10 +530,11 @@ class BatchProcessor {
 	private function check_internal_url_via_http( Url $url ): void {
 		// Use a short timeout for internal requests (same server = fast).
 		$args = array(
-			'timeout'     => 3,
-			'redirection' => 3,
-			'sslverify'   => false, // Same server, skip SSL verification.
-			'user-agent'  => 'Yoko Link Checker Internal Check',
+			'timeout'            => 3,
+			'redirection'        => 3,
+			'sslverify'          => false, // Same server, skip SSL verification.
+			'reject_unsafe_urls' => true,  // WordPress core SSRF protection.
+			'user-agent'         => 'Yoko Link Checker Internal Check',
 		);
 
 		/**
@@ -479,55 +559,39 @@ class BatchProcessor {
 
 		if ( is_wp_error( $response ) ) {
 			$error_message = $response->get_error_message();
+			$error_type    = $response->get_error_code();
 
-			// Check if it's a timeout.
-			if ( strpos( $error_message, 'timed out' ) !== false || strpos( $error_message, 'timeout' ) !== false ) {
-				$url->status        = Url::STATUS_TIMEOUT;
-				$url->http_code     = null;
-				$url->error_message = $error_message;
-			} else {
-				// Other errors (connection refused, DNS failure, etc.) = likely broken.
-				$url->status        = Url::STATUS_BROKEN;
-				$url->http_code     = null;
-				$url->error_message = $error_message;
-			}
+			$url->http_code     = null;
+			$url->error_message = $error_message;
+			$url->status        = $this->classifier->classify(
+				null,
+				(string) $error_type,
+				$error_message,
+				$url->url
+			);
+
 			$this->url_repository->update( $url );
 			return;
 		}
 
-		$http_code      = wp_remote_retrieve_response_code( $response );
-		$url->http_code = $http_code;
+		$http_code = wp_remote_retrieve_response_code( $response );
 
-		// Classify the response code.
-		if ( $http_code >= 200 && $http_code < 300 ) {
-			$url->status = Url::STATUS_VALID;
-		} elseif ( $http_code >= 300 && $http_code < 400 ) {
-			$url->status = Url::STATUS_REDIRECT;
-			// Capture redirect URL if available.
-			$headers = wp_remote_retrieve_headers( $response );
-			if ( isset( $headers['location'] ) ) {
-				$url->redirect_url = is_array( $headers['location'] ) ? $headers['location'][0] : $headers['location'];
-			}
-		} elseif ( 401 === $http_code || 403 === $http_code ) {
-			// Auth required or forbidden - could be intentional, mark as warning.
-			$url->status        = Url::STATUS_BLOCKED;
-			$url->error_message = __( 'Access denied (authentication required or forbidden).', 'yoko-link-checker' );
-		} elseif ( $http_code >= 400 && $http_code < 500 ) {
-			// 4xx errors (including 404) = broken.
-			$url->status = Url::STATUS_BROKEN;
-		} elseif ( $http_code >= 500 ) {
-			// 5xx server errors = broken.
-			$url->status        = Url::STATUS_BROKEN;
-			$url->error_message = __( 'Server error.', 'yoko-link-checker' );
-		} else {
-			// Unexpected code.
-			$url->status        = Url::STATUS_WARNING;
-			$url->error_message = sprintf(
-				/* translators: %d: HTTP status code */
-				__( 'Unexpected HTTP status code: %d', 'yoko-link-checker' ),
-				$http_code
-			);
+		// Determine final URL from Location header if present.
+		$final_url = null;
+		$headers   = wp_remote_retrieve_headers( $response );
+		if ( isset( $headers['location'] ) ) {
+			$final_url = is_array( $headers['location'] ) ? $headers['location'][0] : $headers['location'];
 		}
+
+		$url->http_code = $http_code;
+		$url->final_url = $final_url;
+		$url->status    = $this->classifier->classify(
+			$http_code,
+			null,
+			null,
+			$url->url,
+			$final_url
+		);
 
 		$this->url_repository->update( $url );
 	}

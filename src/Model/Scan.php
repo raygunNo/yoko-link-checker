@@ -33,9 +33,7 @@ final class Scan {
 	/**
 	 * Scan type constants.
 	 */
-	public const TYPE_FULL        = 'full';
-	public const TYPE_INCREMENTAL = 'incremental';
-	public const TYPE_RECHECK     = 'recheck';
+	public const TYPE_FULL = 'full';
 
 	/**
 	 * Scan phase constants.
@@ -218,16 +216,6 @@ final class Scan {
 	 */
 	public function is_completed(): bool {
 		return self::STATUS_COMPLETED === $this->status;
-	}
-
-	/**
-	 * Check if scan can be resumed.
-	 *
-	 * @since 1.0.0
-	 * @return bool
-	 */
-	public function can_resume(): bool {
-		return in_array( $this->status, array( self::STATUS_PAUSED, self::STATUS_RUNNING ), true );
 	}
 
 	/**

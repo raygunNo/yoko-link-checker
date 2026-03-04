@@ -48,39 +48,6 @@ final class ExtractorRegistry {
 	}
 
 	/**
-	 * Unregister an extractor.
-	 *
-	 * @since 1.0.0
-	 * @param string $id Extractor ID.
-	 * @return void
-	 */
-	public function unregister( string $id ): void {
-		unset( $this->extractors[ $id ] );
-	}
-
-	/**
-	 * Get an extractor by ID.
-	 *
-	 * @since 1.0.0
-	 * @param string $id Extractor ID.
-	 * @return ExtractorInterface|null
-	 */
-	public function get( string $id ): ?ExtractorInterface {
-		return $this->extractors[ $id ] ?? null;
-	}
-
-	/**
-	 * Get all registered extractors.
-	 *
-	 * @since 1.0.0
-	 * @return array<ExtractorInterface>
-	 */
-	public function all(): array {
-		$this->sort_extractors();
-		return array_values( $this->extractors );
-	}
-
-	/**
 	 * Get extractors that support a post.
 	 *
 	 * @since 1.0.0
@@ -127,27 +94,6 @@ final class ExtractorRegistry {
 		}
 
 		return $all_links;
-	}
-
-	/**
-	 * Count registered extractors.
-	 *
-	 * @since 1.0.0
-	 * @return int
-	 */
-	public function count(): int {
-		return count( $this->extractors );
-	}
-
-	/**
-	 * Check if an extractor is registered.
-	 *
-	 * @since 1.0.0
-	 * @param string $id Extractor ID.
-	 * @return bool
-	 */
-	public function has( string $id ): bool {
-		return isset( $this->extractors[ $id ] );
 	}
 
 	/**

@@ -102,13 +102,9 @@ final class UrlRepository {
 	 * @return Url|null The URL entity, or null if URL is invalid.
 	 */
 	public function find_or_create_from_raw( string $raw_url ): ?Url {
-		// Skip empty or invalid URLs.
 		$raw_url = trim( $raw_url );
-		if ( empty( $raw_url ) || '#' === $raw_url || 0 === strpos( $raw_url, 'javascript:' ) || 0 === strpos( $raw_url, 'mailto:' ) || 0 === strpos( $raw_url, 'tel:' ) ) {
-			return null;
-		}
 
-		// Normalize the URL.
+		// Normalize the URL (the normalizer handles skippable schemes).
 		$normalized = $this->normalizer->normalize( $raw_url );
 		if ( empty( $normalized ) ) {
 			return null;
@@ -127,9 +123,9 @@ final class UrlRepository {
 	 * @param string $original_url   The original URL as found.
 	 * @param string $normalized_url The normalized URL.
 	 * @param bool   $is_internal    Whether URL is internal.
-	 * @return Url The existing or newly created URL.
+	 * @return Url|null The existing or newly created URL, or null on failure.
 	 */
-	public function find_or_create( string $original_url, string $normalized_url, bool $is_internal ): Url {
+	public function find_or_create( string $original_url, string $normalized_url, bool $is_internal ): ?Url {
 		$url_hash = $this->normalizer->hash( $normalized_url );
 
 		// Try to find existing.
@@ -148,7 +144,14 @@ final class UrlRepository {
 		$url->status         = Url::STATUS_PENDING;
 		$url->first_seen     = current_time( 'mysql' );
 
-		return $this->insert( $url );
+		$result = $this->insert( $url );
+
+		if ( null === $result ) {
+			// Insert failed, likely duplicate key from a race condition. Re-fetch.
+			return $this->find_by_hash( $url_hash );
+		}
+
+		return $result;
 	}
 
 	/**
@@ -156,9 +159,9 @@ final class UrlRepository {
 	 *
 	 * @since 1.0.0
 	 * @param Url $url URL entity.
-	 * @return Url URL with ID populated.
+	 * @return Url|null URL with ID populated, or null on failure.
 	 */
-	public function insert( Url $url ): Url {
+	public function insert( Url $url ): ?Url {
 		global $wpdb;
 
 		$data = $url->to_row();
@@ -169,11 +172,15 @@ final class UrlRepository {
 		}
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->insert(
+		$result = $wpdb->insert(
 			$this->table,
 			$data,
 			$this->get_format( $data )
 		);
+
+		if ( false === $result ) {
+			return null;
+		}
 
 		$url->id = (int) $wpdb->insert_id;
 
@@ -217,6 +224,12 @@ final class UrlRepository {
 	 */
 	public function delete( int $id ): bool {
 		global $wpdb;
+
+		$links_table = $wpdb->prefix . 'yoko_lc_links';
+
+		// Delete associated links first.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$wpdb->delete( $links_table, array( 'url_id' => $id ), array( '%d' ) );
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$result = $wpdb->delete(
@@ -346,27 +359,6 @@ final class UrlRepository {
 	}
 
 	/**
-	 * Count all URLs. Alias for count().
-	 *
-	 * @since 1.0.0
-	 * @return int
-	 */
-	public function count_all(): int {
-		return $this->count();
-	}
-
-	/**
-	 * Count URLs by specific status. Alias for count().
-	 *
-	 * @since 1.0.0
-	 * @param string $status Status to count.
-	 * @return int
-	 */
-	public function count_by_status( string $status ): int {
-		return $this->count( $status );
-	}
-
-	/**
 	 * Get status counts.
 	 *
 	 * @since 1.0.0
@@ -462,16 +454,6 @@ final class UrlRepository {
 		// phpcs:enable
 
 		return false !== $result ? (int) $result : 0;
-	}
-
-	/**
-	 * Count pending URLs.
-	 *
-	 * @since 1.0.0
-	 * @return int
-	 */
-	public function count_pending(): int {
-		return $this->count( Url::STATUS_PENDING );
 	}
 
 	/**
