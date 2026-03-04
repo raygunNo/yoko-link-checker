@@ -93,6 +93,11 @@ composer run phpcs
 
 ## Changelog
 
+### 1.0.3
+- Internal URLs now properly checked for broken links using WordPress functions
+- Detects links to deleted, draft, or unpublished posts without HTTP requests
+- Unverifiable internal URLs marked as warnings for manual review
+
 ### 1.0.2
 - Fixed undefined property warning for `redirect_url`
 - Fixed upstream timeouts by skipping internal URL checks (self-referential requests)

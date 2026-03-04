@@ -334,14 +334,10 @@ class BatchProcessor {
 			return;
 		}
 
-		// Skip internal URLs to prevent self-referential timeouts.
-		// Internal links are assumed valid since they're on the same site.
+		// For internal URLs, check via WordPress functions instead of HTTP.
+		// This avoids self-referential HTTP requests that can deadlock PHP workers.
 		if ( $url->is_internal ) {
-			$url->status       = Url::STATUS_VALID;
-			$url->http_code    = 200;
-			$url->last_checked = current_time( 'mysql' );
-			$url->check_count  = ( $url->check_count ?? 0 ) + 1;
-			$this->url_repository->update( $url );
+			$this->check_internal_url( $url );
 			return;
 		}
 
@@ -366,6 +362,82 @@ class BatchProcessor {
 		 * @param \YokoLinkChecker\Checker\CheckResult $result Check result.
 		 */
 		do_action( 'yoko_lc_url_checked', $url, $result );
+	}
+
+	/**
+	 * Check an internal URL using WordPress functions instead of HTTP.
+	 *
+	 * This avoids self-referential HTTP requests that can deadlock PHP workers
+	 * on limited-resource hosts.
+	 *
+	 * @since 1.0.2
+	 * @param Url $url URL model.
+	 * @return void
+	 */
+	private function check_internal_url( Url $url ): void {
+		$url->last_checked = current_time( 'mysql' );
+		$url->check_count  = ( $url->check_count ?? 0 ) + 1;
+
+		// Try to resolve the URL to a post ID using WordPress.
+		$post_id = url_to_postid( $url->url );
+
+		if ( $post_id > 0 ) {
+			// URL resolves to a valid post/page.
+			$post = get_post( $post_id );
+			if ( $post && 'publish' === $post->post_status ) {
+				$url->status    = Url::STATUS_VALID;
+				$url->http_code = 200;
+			} else {
+				// Post exists but isn't published (draft, trash, etc.).
+				$url->status        = Url::STATUS_BROKEN;
+				$url->http_code     = 404;
+				$url->error_message = __( 'Post exists but is not published.', 'yoko-link-checker' );
+			}
+			$this->url_repository->update( $url );
+			return;
+		}
+
+		// Check if it's a homepage or front page URL.
+		$home_url = home_url( '/' );
+		if ( trailingslashit( $url->url ) === $home_url || untrailingslashit( $url->url ) === untrailingslashit( $home_url ) ) {
+			$url->status    = Url::STATUS_VALID;
+			$url->http_code = 200;
+			$this->url_repository->update( $url );
+			return;
+		}
+
+		// Check if it's a term (category, tag, taxonomy) archive.
+		$path = wp_parse_url( $url->url, PHP_URL_PATH );
+		if ( $path ) {
+			$path = trim( $path, '/' );
+			// Check common archive patterns.
+			$term = get_term_by( 'slug', basename( $path ), 'category' );
+			if ( ! $term ) {
+				$term = get_term_by( 'slug', basename( $path ), 'post_tag' );
+			}
+			if ( $term && ! is_wp_error( $term ) ) {
+				$url->status    = Url::STATUS_VALID;
+				$url->http_code = 200;
+				$this->url_repository->update( $url );
+				return;
+			}
+		}
+
+		// Check attachments by URL.
+		$attachment_id = attachment_url_to_postid( $url->url );
+		if ( $attachment_id > 0 ) {
+			$url->status    = Url::STATUS_VALID;
+			$url->http_code = 200;
+			$this->url_repository->update( $url );
+			return;
+		}
+
+		// Could not verify URL via WordPress functions.
+		// Mark as warning so it can be manually reviewed.
+		$url->status        = Url::STATUS_WARNING;
+		$url->http_code     = null;
+		$url->error_message = __( 'Internal URL could not be verified. May be a custom route or archive.', 'yoko-link-checker' );
+		$this->url_repository->update( $url );
 	}
 
 	/**
