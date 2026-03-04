@@ -86,12 +86,8 @@ final class Logger {
 	 * @return void
 	 */
 	private static function log( string $level, string $message, array $context = array() ): void {
-		// Only log if debugging is enabled.
-		if ( ! defined( 'WP_DEBUG' ) || ! WP_DEBUG ) {
-			return;
-		}
-
-		if ( ! defined( 'WP_DEBUG_LOG' ) || ! WP_DEBUG_LOG ) {
+		// Only log if plugin debug mode is explicitly enabled.
+		if ( ! defined( 'YOKO_LC_DEBUG' ) || ! YOKO_LC_DEBUG ) {
 			return;
 		}
 

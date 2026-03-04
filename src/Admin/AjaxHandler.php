@@ -106,9 +106,15 @@ class AjaxHandler {
 		$this->verify_request( 'yoko_lc_manage_scans' );
 
 		try {
-			error_log( '[YLC Debug] start_scan AJAX called' );
+			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( '[YLC Debug] start_scan AJAX called' );
+			}
 			$scan_id = $this->scan_orchestrator->start_scan( 'full' );
-			error_log( '[YLC Debug] start_scan returned: ' . var_export( $scan_id, true ) );
+			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log,WordPress.PHP.DevelopmentFunctions.error_log_var_export
+				error_log( '[YLC Debug] start_scan returned: ' . var_export( $scan_id, true ) );
+			}
 
 			if ( ! $scan_id ) {
 				wp_send_json_error(
@@ -125,8 +131,12 @@ class AjaxHandler {
 				)
 			);
 		} catch ( \Throwable $e ) {
-			error_log( '[YLC ERROR] start_scan exception: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() );
-			error_log( '[YLC ERROR] Stack trace: ' . $e->getTraceAsString() );
+			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( '[YLC ERROR] start_scan exception: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( '[YLC ERROR] Stack trace: ' . $e->getTraceAsString() );
+			}
 			wp_send_json_error( array( 'message' => 'Error: ' . $e->getMessage() ) );
 		}
 	}
@@ -218,19 +228,32 @@ class AjaxHandler {
 		try {
 			$status = $this->scan_orchestrator->get_status();
 
-			error_log( '[YLC Debug] get_scan_status called. Status: ' . wp_json_encode( $status ) );
+			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( '[YLC Debug] get_scan_status called. Status: ' . wp_json_encode( $status ) );
+			}
 
 			// If scan is running, process a batch via AJAX to avoid WP-Cron dependency.
 			if ( $status && 'running' === $status['status'] ) {
-				error_log( '[YLC Debug] Processing batch for scan ID: ' . $status['scan_id'] );
+				if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+					error_log( '[YLC Debug] Processing batch for scan ID: ' . $status['scan_id'] );
+				}
 				$this->scan_orchestrator->process_batch( $status['scan_id'] );
 				// Refresh status after processing.
 				$status = $this->scan_orchestrator->get_status();
-				error_log( '[YLC Debug] After batch, status: ' . wp_json_encode( $status ) );
+				if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+					error_log( '[YLC Debug] After batch, status: ' . wp_json_encode( $status ) );
+				}
 			}
 		} catch ( \Throwable $e ) {
-			error_log( '[YLC ERROR] get_scan_status exception: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() );
-			error_log( '[YLC ERROR] Stack trace: ' . $e->getTraceAsString() );
+			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( '[YLC ERROR] get_scan_status exception: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() );
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( '[YLC ERROR] Stack trace: ' . $e->getTraceAsString() );
+			}
 			wp_send_json_error( array( 'message' => 'Error: ' . $e->getMessage() ) );
 			return;
 		}

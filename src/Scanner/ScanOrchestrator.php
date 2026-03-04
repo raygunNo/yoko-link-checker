@@ -86,25 +86,40 @@ class ScanOrchestrator {
 	 * @return int|false Scan ID or false on failure.
 	 */
 	public function start_scan( string $type = 'full' ) {
-		error_log( '[YLC Debug] start_scan() called with type: ' . $type );
+		if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( '[YLC Debug] start_scan() called with type: ' . $type );
+		}
 
 		// Check if a scan is already running.
 		$running = $this->scan_repository->get_running();
 		if ( $running ) {
-			error_log( '[YLC Debug] start_scan - A scan is already running: ID ' . $running->id );
+			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( '[YLC Debug] start_scan - A scan is already running: ID ' . $running->id );
+			}
 			return false;
 		}
 
 		// Count total posts to scan.
 		$total_posts = $this->content_discovery->count_posts();
-		error_log( '[YLC Debug] start_scan - Total posts to scan: ' . $total_posts );
+		if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( '[YLC Debug] start_scan - Total posts to scan: ' . $total_posts );
+		}
 
 		// Create scan record with proper arguments.
 		$scan = $this->scan_repository->create( $type );
-		error_log( '[YLC Debug] start_scan - Created scan: ' . ( $scan ? 'ID ' . $scan->id : 'FAILED' ) );
+		if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( '[YLC Debug] start_scan - Created scan: ' . ( $scan ? 'ID ' . $scan->id : 'FAILED' ) );
+		}
 
 		if ( ! $scan || ! $scan->id ) {
-			error_log( '[YLC Debug] start_scan - Failed to create scan record' );
+			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( '[YLC Debug] start_scan - Failed to create scan record' );
+			}
 			return false;
 		}
 
@@ -115,7 +130,10 @@ class ScanOrchestrator {
 		$scan->started_at    = current_time( 'mysql' );
 
 		$update_result = $this->scan_repository->update( $scan );
-		error_log( '[YLC Debug] start_scan - Updated scan: ' . ( $update_result ? 'success' : 'failed' ) );
+		if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( '[YLC Debug] start_scan - Updated scan: ' . ( $update_result ? 'success' : 'failed' ) );
+		}
 
 		$scan_id = $scan->id;
 
@@ -144,18 +162,31 @@ class ScanOrchestrator {
 	public function process_batch( int $scan_id ): void {
 		$scan = $this->scan_repository->find( $scan_id );
 
-		error_log( '[YLC Debug] process_batch - Scan ID: ' . $scan_id );
-		error_log( '[YLC Debug] process_batch - Scan found: ' . ( $scan ? 'yes' : 'no' ) );
+		if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( '[YLC Debug] process_batch - Scan ID: ' . $scan_id );
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( '[YLC Debug] process_batch - Scan found: ' . ( $scan ? 'yes' : 'no' ) );
+		}
 
 		if ( ! $scan ) {
-			error_log( '[YLC Debug] process_batch - No scan found, returning' );
+			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( '[YLC Debug] process_batch - No scan found, returning' );
+			}
 			return;
 		}
 
-		error_log( '[YLC Debug] process_batch - Scan status: ' . $scan->status . ', phase: ' . $scan->current_phase );
+		if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( '[YLC Debug] process_batch - Scan status: ' . $scan->status . ', phase: ' . $scan->current_phase );
+		}
 
 		if ( Scan::STATUS_RUNNING !== $scan->status ) {
-			error_log( '[YLC Debug] process_batch - Scan not running, returning' );
+			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( '[YLC Debug] process_batch - Scan not running, returning' );
+			}
 			return;
 		}
 
@@ -163,24 +194,36 @@ class ScanOrchestrator {
 		$state      = null;
 
 		if ( Scan::PHASE_DISCOVERY === $scan->current_phase ) {
-			error_log( '[YLC Debug] Calling process_discovery_phase' );
+			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( '[YLC Debug] Calling process_discovery_phase' );
+			}
 			$state = $this->process_discovery_phase( $scan );
-			error_log(
-				'[YLC Debug] Discovery phase result: ' . ( $state ? wp_json_encode(
-					array(
-						'total'     => $state->total,
-						'processed' => $state->processed,
-						'complete'  => $state->complete,
-					)
-				) : 'null' )
-			);
+			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log(
+					'[YLC Debug] Discovery phase result: ' . ( $state ? wp_json_encode(
+						array(
+							'total'     => $state->total,
+							'processed' => $state->processed,
+							'complete'  => $state->complete,
+						)
+					) : 'null' )
+				);
+			}
 		} elseif ( Scan::PHASE_CHECKING === $scan->current_phase ) {
-			error_log( '[YLC Debug] Calling process_checking_phase' );
+			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( '[YLC Debug] Calling process_checking_phase' );
+			}
 			$state = $this->process_checking_phase( $scan );
 		}
 
 		if ( ! $state ) {
-			error_log( '[YLC Debug] No state returned from phase processing' );
+			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( '[YLC Debug] No state returned from phase processing' );
+			}
 			return;
 		}
 
@@ -561,7 +604,10 @@ class ScanOrchestrator {
 			$batch_time
 		);
 
-		error_log( '[YLC] ' . $message );
+		if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( '[YLC] ' . $message );
+		}
 	}
 
 	/**

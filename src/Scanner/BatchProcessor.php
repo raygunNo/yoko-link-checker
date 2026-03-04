@@ -109,13 +109,19 @@ class BatchProcessor {
 	 * @return ScanState Current state after processing.
 	 */
 	public function process_discovery_batch( int $scan_id, int $after_id = 0, int $batch_size = 50 ): ScanState {
-		error_log( "[YLC Debug] process_discovery_batch - scan_id: $scan_id, after_id: $after_id, batch_size: $batch_size" );
+		if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( "[YLC Debug] process_discovery_batch - scan_id: $scan_id, after_id: $after_id, batch_size: $batch_size" );
+		}
 
 		$posts       = $this->content_discovery->get_batch( $after_id, $batch_size );
 		$total_posts = $this->content_discovery->count_posts();
 		$last_id     = $after_id;
 
-		error_log( '[YLC Debug] process_discovery_batch - Got ' . count( $posts ) . " posts, total_posts: $total_posts" );
+		if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( '[YLC Debug] process_discovery_batch - Got ' . count( $posts ) . " posts, total_posts: $total_posts" );
+		}
 
 		foreach ( $posts as $post ) {
 			$this->process_post( $scan_id, $post );
@@ -125,13 +131,19 @@ class BatchProcessor {
 		$processed_count = count( $posts );
 		$complete        = $processed_count < $batch_size;
 
-		error_log( "[YLC Debug] process_discovery_batch - processed_count: $processed_count, complete: " . ( $complete ? 'yes' : 'no' ) );
+		if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+			error_log( "[YLC Debug] process_discovery_batch - processed_count: $processed_count, complete: " . ( $complete ? 'yes' : 'no' ) );
+		}
 
 		// Update scan state.
 		$scan = $this->scan_repository->find( $scan_id );
 		if ( $scan ) {
 			$new_processed = $scan->processed_posts + $processed_count;
-			error_log( "[YLC Debug] process_discovery_batch - Updating progress: new_processed=$new_processed" );
+			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+				error_log( "[YLC Debug] process_discovery_batch - Updating progress: new_processed=$new_processed" );
+			}
 			$this->scan_repository->update_progress(
 				$scan,
 				Scan::PHASE_DISCOVERY,
@@ -252,7 +264,10 @@ class BatchProcessor {
 				++$actual_checked;
 			} catch ( \Throwable $e ) {
 				// Log error but continue with other URLs.
-				error_log( '[YLC] URL check failed for ID ' . $url->id . ': ' . $e->getMessage() );
+				if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+					error_log( '[YLC] URL check failed for ID ' . $url->id . ': ' . $e->getMessage() );
+				}
 				// Mark as error so we don't retry immediately.
 				$url->status        = Url::STATUS_ERROR;
 				$url->error_message = substr( $e->getMessage(), 0, 255 );
@@ -262,7 +277,10 @@ class BatchProcessor {
 					$this->url_repository->update( $url );
 					++$actual_checked;
 				} catch ( \Throwable $update_error ) {
-					error_log( '[YLC] Failed to update URL ' . $url->id . ': ' . $update_error->getMessage() );
+					if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
+						// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+						error_log( '[YLC] Failed to update URL ' . $url->id . ': ' . $update_error->getMessage() );
+					}
 				}
 			}
 			$last_id = $url->id;
