@@ -182,7 +182,13 @@ class ResultsPage {
 			return;
 		}
 
-		$this->url_repository->mark_ignored( $link->url_id );
+		$result = $this->url_repository->mark_ignored( $link->url_id );
+
+		if ( ! $result ) {
+			$redirect_url = remove_query_arg( array( 'action', 'link_id', '_wpnonce' ) );
+			wp_safe_redirect( add_query_arg( 'ylc_error', 'ignore_failed', $redirect_url ) );
+			exit;
+		}
 
 		/**
 		 * Fires when a link is ignored.
@@ -207,7 +213,13 @@ class ResultsPage {
 			return;
 		}
 
-		$this->url_repository->unmark_ignored( $link->url_id );
+		$result = $this->url_repository->unmark_ignored( $link->url_id );
+
+		if ( ! $result ) {
+			$redirect_url = remove_query_arg( array( 'action', 'link_id', '_wpnonce' ) );
+			wp_safe_redirect( add_query_arg( 'ylc_error', 'unignore_failed', $redirect_url ) );
+			exit;
+		}
 
 		/**
 		 * Fires when a link is unignored.
@@ -273,6 +285,7 @@ class ResultsPage {
 		);
 
 		// Stream data rows from the generator -- constant memory regardless of dataset size.
+		$row_count = 0;
 		foreach ( $this->link_repository->stream_for_export() as $link ) {
 			fputcsv(
 				$output,
@@ -289,9 +302,15 @@ class ResultsPage {
 				)
 			);
 
-			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fflush
-			fflush( $output );
+			if ( ++$row_count % 500 === 0 ) {
+				// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fflush
+				fflush( $output );
+			}
 		}
+
+		// Final flush to ensure all remaining rows are written.
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fflush
+		fflush( $output );
 
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Using php://output stream for CSV export.
 		fclose( $output );

@@ -378,13 +378,14 @@ class AjaxHandler {
 	public function get_stats(): void {
 		$this->verify_request( 'yoko_lc_view_results' );
 
-		$stats = array(
-			'total'    => $this->url_repository->count(),
-			'broken'   => $this->url_repository->count( 'broken' ),
-			'warning'  => $this->url_repository->count( 'warning' ),
-			'redirect' => $this->url_repository->count( 'redirect' ),
-			'valid'    => $this->url_repository->count( 'valid' ),
-			'pending'  => $this->url_repository->count( 'pending' ),
+		$status_counts = $this->url_repository->get_status_counts();
+		$stats         = array(
+			'total'    => array_sum( $status_counts ),
+			'broken'   => $status_counts['broken'] ?? 0,
+			'warning'  => $status_counts['warning'] ?? 0,
+			'redirect' => $status_counts['redirect'] ?? 0,
+			'valid'    => $status_counts['valid'] ?? 0,
+			'pending'  => $status_counts['pending'] ?? 0,
 		);
 
 		wp_send_json_success( $stats );

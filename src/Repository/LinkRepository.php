@@ -594,27 +594,14 @@ final class LinkRepository {
 	}
 
 	/**
-	 * Get all links for CSV export.
-	 *
-	 * @since      1.0.3
-	 * @deprecated 1.0.9 Use stream_for_export() instead for memory-efficient streaming.
-	 * @return array<\stdClass>
-	 */
-	public function get_all_for_export(): array {
-		$rows = array();
-		foreach ( $this->stream_for_export() as $row ) {
-			$rows[] = $row;
-		}
-		return $rows;
-	}
-
-	/**
 	 * Stream links for CSV export using chunked queries.
 	 *
-	 * Uses LIMIT/OFFSET pagination and yields rows one at a time via a PHP
-	 * generator, ensuring constant memory usage regardless of dataset size.
+	 * Uses keyset (cursor-based) pagination and yields rows one at a time via
+	 * a PHP generator, ensuring constant memory usage and O(n) query performance
+	 * regardless of dataset size.
 	 *
 	 * @since 1.0.9
+	 * @since 1.0.10 Switched from LIMIT/OFFSET to keyset pagination for O(n) performance.
 	 * @param int $chunk_size Number of rows to fetch per database query. Default 1000.
 	 * @return \Generator<int, \stdClass> Yields stdClass row objects with source_url populated.
 	 */
@@ -622,7 +609,7 @@ final class LinkRepository {
 		global $wpdb;
 
 		$chunk_size = max( 1, $chunk_size );
-		$offset     = 0;
+		$last_id    = 0;
 
 		do {
 			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
@@ -630,6 +617,7 @@ final class LinkRepository {
 			$rows = $wpdb->get_results(
 				$wpdb->prepare(
 					"SELECT
+						l.id,
 						u.url,
 						u.status,
 						u.http_code,
@@ -644,10 +632,11 @@ final class LinkRepository {
 					FROM {$this->table} l
 					JOIN {$this->urls_table} u ON l.url_id = u.id
 					LEFT JOIN {$wpdb->posts} p ON l.source_id = p.ID AND l.source_type = 'post'
-					ORDER BY u.status ASC, u.url ASC
-					LIMIT %d OFFSET %d",
-					$chunk_size,
-					$offset
+					WHERE l.id > %d
+					ORDER BY l.id ASC
+					LIMIT %d",
+					$last_id,
+					$chunk_size
 				)
 			);
 			// phpcs:enable
@@ -676,7 +665,7 @@ final class LinkRepository {
 				yield $row;
 			}
 
-			$offset += $chunk_size;
+			$last_id = (int) end( $rows )->id;
 		} while ( count( $rows ) === $chunk_size );
 	}
 
@@ -717,7 +706,7 @@ final class LinkRepository {
 			$source_id  = $row->source_id ? (int) $row->source_id : 0;
 			$post_title = '';
 
-			if ( $source_id && in_array( $row->source_type, array( 'post', 'page' ), true ) ) {
+			if ( $source_id ) {
 				$post_title = $row->post_title ?? '';
 			}
 

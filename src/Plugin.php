@@ -68,8 +68,6 @@ final class Plugin {
 			return;
 		}
 
-		$this->booted = true;
-
 		// Check if database needs setup (in case activation hook didn't run).
 		$this->maybe_run_activation();
 
@@ -91,6 +89,8 @@ final class Plugin {
 		 * @param Plugin $plugin The plugin instance.
 		 */
 		do_action( 'yoko_lc_booted', $this );
+
+		$this->booted = true;
 	}
 
 	/**
@@ -120,6 +120,7 @@ final class Plugin {
 	 */
 	private function register_cron_hooks(): void {
 		add_action( 'yoko_lc_process_scan_batch', array( $this, 'handle_cron_batch' ), 10, 1 );
+		add_action( 'yoko_lc_auto_scan', array( $this, 'handle_auto_scan' ) );
 	}
 
 	/**
@@ -151,6 +152,18 @@ final class Plugin {
 	 */
 	public function handle_cron_batch( int $scan_id ): void {
 		$this->scan_orchestrator()->process_batch( $scan_id );
+	}
+
+	/**
+	 * Handle a cron-triggered automatic scan.
+	 *
+	 * Starts a full scan when the yoko_lc_auto_scan event fires.
+	 *
+	 * @since 1.0.9
+	 * @return void
+	 */
+	public function handle_auto_scan(): void {
+		$this->scan_orchestrator()->start_scan( 'full' );
 	}
 
 	/**
@@ -404,6 +417,11 @@ final class Plugin {
 	 * @return void
 	 */
 	public function set_service( string $key, object $instance ): void {
+		if ( $this->booted && ! defined( 'YOKO_LC_TESTING' ) ) {
+			_doing_it_wrong( __METHOD__, 'Services cannot be replaced after the plugin has booted.', '1.1.0' );
+			return;
+		}
+
 		$this->services[ $key ] = $instance;
 	}
 

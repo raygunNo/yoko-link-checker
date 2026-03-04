@@ -56,10 +56,10 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 		delete_option( $option );
 	}
 
-	// Remove scan cursor options (dynamic keys).
+	// Remove scan cursor and last-activity options (dynamic keys).
 	// phpcs:ignore WordPress.DB.DirectDatabaseQuery
 	$wpdb->query(
-		"DELETE FROM {$wpdb->options} WHERE option_name LIKE 'yoko_lc_scan_%_cursor_%'"
+		"DELETE FROM {$wpdb->options} WHERE option_name LIKE 'yoko_lc_scan_%'"
 	);
 
 	/**

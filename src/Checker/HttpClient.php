@@ -289,25 +289,59 @@ final class HttpClient {
 	 */
 	public function get_error_type( WP_Error $error ): string {
 		$code    = $error->get_error_code();
-		$message = strtolower( $error->get_error_message() );
+		$message = $error->get_error_message();
 
 		// Map common error patterns.
 		if ( 'http_request_failed' === $code ) {
-			if ( str_contains( $message, 'ssl' ) || str_contains( $message, 'certificate' ) ) {
-				return 'ssl_error';
-			}
-			if ( str_contains( $message, 'resolve' ) || str_contains( $message, 'dns' ) ) {
-				return 'dns_error';
-			}
-			if ( str_contains( $message, 'timed out' ) || str_contains( $message, 'timeout' ) ) {
-				return 'timeout';
-			}
-			if ( str_contains( $message, 'connection' ) || str_contains( $message, 'refused' ) ) {
-				return 'connection_error';
-			}
+			return self::classify_error( $message );
 		}
 
 		return $code ? $code : 'unknown_error';
+	}
+
+	/**
+	 * Classify an error message string into an error type.
+	 *
+	 * This is a shared classification method that can be used by any component
+	 * that needs to categorise HTTP error messages, including parallel request
+	 * handlers that do not have a WP_Error object.
+	 *
+	 * @since 1.0.11
+	 * @param string $message Error message to classify.
+	 * @return string Error type identifier.
+	 */
+	public static function classify_error( string $message ): string {
+		$message_lower = strtolower( $message );
+
+		if ( str_contains( $message_lower, 'ssl' ) || str_contains( $message_lower, 'certificate' ) ) {
+			return 'ssl_error';
+		}
+		if ( str_contains( $message_lower, 'resolve' ) || str_contains( $message_lower, 'dns' ) ) {
+			return 'dns_error';
+		}
+		if ( str_contains( $message_lower, 'timed out' ) || str_contains( $message_lower, 'timeout' ) ) {
+			return 'timeout';
+		}
+		if ( str_contains( $message_lower, 'connection' ) || str_contains( $message_lower, 'refused' ) ) {
+			return 'connection_error';
+		}
+
+		return 'http_request_failed';
+	}
+
+	/**
+	 * Validate a URL against SSRF protection rules.
+	 *
+	 * Public wrapper around check_ssrf() for use by other components
+	 * that make HTTP requests outside of this client (e.g. parallel
+	 * requests via the Requests library).
+	 *
+	 * @since 1.0.10
+	 * @param string $url URL to validate.
+	 * @return WP_Error|null WP_Error if the URL is blocked, null if allowed.
+	 */
+	public function validate_url_ssrf( string $url ): ?WP_Error {
+		return $this->check_ssrf( $url );
 	}
 
 	/**

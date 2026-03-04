@@ -313,7 +313,7 @@ final class UrlChecker {
 	 * @param array<string> $urls URLs to check concurrently.
 	 * @return array<string, CheckResult>|false Results keyed by URL, or false on failure.
 	 */
-	private function check_batch_parallel( array $urls ): array|false {
+	private function check_batch_parallel( array $urls ) {
 		try {
 			$head_urls = array();
 			$get_urls  = array();
@@ -377,7 +377,7 @@ final class UrlChecker {
 	 * @param string        $method HTTP method ('HEAD' or 'GET').
 	 * @return array<string, CheckResult>|false Results keyed by URL, or false on failure.
 	 */
-	private function send_parallel_requests( array $urls, string $method = 'HEAD' ): array|false {
+	private function send_parallel_requests( array $urls, string $method = 'HEAD' ) {
 		$requests_class = null;
 
 		if ( class_exists( '\WpOrg\Requests\Requests' ) ) {
@@ -408,10 +408,19 @@ final class UrlChecker {
 			'verify'           => $wp_args['sslverify'] ?? true,
 		);
 
-		$requests   = array();
-		$start_time = microtime( true );
+		$requests      = array();
+		$ssrf_blocked  = array();
+		$start_time    = microtime( true );
 
 		foreach ( $urls as $url ) {
+			$ssrf_error = $this->http_client->validate_url_ssrf( $url );
+
+			if ( null !== $ssrf_error ) {
+				Logger::debug( 'SSRF check blocked URL in parallel request', array( 'url' => $url ) );
+				$ssrf_blocked[ $url ] = $ssrf_error;
+				continue;
+			}
+
 			$requests[ $url ] = array(
 				'url'     => $url,
 				'headers' => $headers,
@@ -432,7 +441,31 @@ final class UrlChecker {
 		$elapsed_time = (int) round( ( microtime( true ) - $start_time ) * 1000 );
 		$time_per_url = count( $urls ) > 0 ? (int) round( $elapsed_time / count( $urls ) ) : 0;
 
+		// Add SSRF-blocked URLs to results.
+		foreach ( $ssrf_blocked as $url => $ssrf_error ) {
+			$status = $this->classifier->classify(
+				null,
+				'ssrf_blocked',
+				$ssrf_error->get_error_message(),
+				$url
+			);
+
+			$results[ $url ] = CheckResult::error(
+				$url,
+				$status,
+				'ssrf_blocked',
+				$ssrf_error->get_error_message(),
+				null,
+				0
+			);
+		}
+
 		foreach ( $urls as $url ) {
+			// Skip URLs already handled by SSRF check.
+			if ( isset( $ssrf_blocked[ $url ] ) ) {
+				continue;
+			}
+
 			if ( ! isset( $responses[ $url ] ) ) {
 				$results[ $url ] = CheckResult::error(
 					$url,
@@ -449,17 +482,7 @@ final class UrlChecker {
 
 			if ( $response instanceof \Exception ) {
 				$error_message = $response->getMessage();
-				$error_type    = 'http_request_failed';
-
-				if ( str_contains( strtolower( $error_message ), 'ssl' ) || str_contains( strtolower( $error_message ), 'certificate' ) ) {
-					$error_type = 'ssl_error';
-				} elseif ( str_contains( strtolower( $error_message ), 'resolve' ) || str_contains( strtolower( $error_message ), 'dns' ) ) {
-					$error_type = 'dns_error';
-				} elseif ( str_contains( strtolower( $error_message ), 'timed out' ) || str_contains( strtolower( $error_message ), 'timeout' ) ) {
-					$error_type = 'timeout';
-				} elseif ( str_contains( strtolower( $error_message ), 'connection' ) || str_contains( strtolower( $error_message ), 'refused' ) ) {
-					$error_type = 'connection_error';
-				}
+				$error_type    = HttpClient::classify_error( $error_message );
 
 				$status = $this->classifier->classify( null, $error_type, $error_message, $url );
 

@@ -271,6 +271,11 @@ class AdminController {
 			? sanitize_key( $_POST['yoko_lc_auto_scan_frequency'] )
 			: 'weekly';
 
+		$allowed_frequencies = array( 'hourly', 'twicedaily', 'daily', 'weekly' );
+		if ( ! in_array( $scan_frequency, $allowed_frequencies, true ) ) {
+			$scan_frequency = 'weekly';
+		}
+
 		update_option( 'yoko_lc_post_types', $post_types );
 		update_option( 'yoko_lc_check_timeout', min( 120, max( 5, $check_timeout ) ) );
 		update_option( 'yoko_lc_auto_scan_enabled', $auto_scan );

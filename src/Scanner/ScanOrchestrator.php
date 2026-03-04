@@ -166,12 +166,16 @@ class ScanOrchestrator {
 	public function process_batch( int $scan_id ): void {
 		$lock_key = 'yoko_lc_batch_lock_' . $scan_id;
 
-		// Prevent concurrent batch processing.
-		if ( get_transient( $lock_key ) ) {
-			Logger::debug( 'process_batch - Concurrent execution blocked', array( 'scan_id' => $scan_id ) );
-			return;
+		// Prevent concurrent batch processing using atomic lock.
+		$acquired = wp_cache_add( $lock_key, true, 'yoko_lc', 120 );
+		if ( ! $acquired ) {
+			// Fallback for environments without persistent object cache.
+			if ( get_transient( $lock_key ) ) {
+				Logger::debug( 'process_batch - Concurrent execution blocked', array( 'scan_id' => $scan_id ) );
+				return;
+			}
+			set_transient( $lock_key, true, 120 );
 		}
-		set_transient( $lock_key, true, 120 ); // 2-minute lock.
 
 		try {
 			$scan = $this->scan_repository->find( $scan_id );
@@ -217,6 +221,7 @@ class ScanOrchestrator {
 			// Handle phase transitions and scheduling.
 			$this->handle_phase_completion( $scan_id, $state );
 		} finally {
+			wp_cache_delete( $lock_key, 'yoko_lc' );
 			delete_transient( $lock_key );
 		}
 	}

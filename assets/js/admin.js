@@ -46,6 +46,7 @@
 		// Link actions
 		$(document).on('click', '.ylc-recheck-url', handleRecheckUrl);
 		$(document).on('click', '.ylc-ignore-link', handleIgnoreLink);
+		$(document).on('click', '.ylc-unignore-link', handleUnignoreLink);
 
 		// Data management
 		$(document).on('click', '.ylc-clear-data', handleClearData);
@@ -59,7 +60,9 @@
 		});
 
 		// Clear polling timer on page unload.
-		$(window).on('beforeunload', stopPolling);
+		$(window).on('beforeunload', function() {
+			stopPolling();
+		});
 	}
 
 	/**
@@ -91,6 +94,7 @@
 			clearInterval(pollIntervalId);
 			pollIntervalId = null;
 		}
+		isPolling = false;
 	}
 
 	/**
@@ -144,8 +148,14 @@
 			const $scanPhase = $('.ylc-scan-phase');
 
 			if (typeof data.progress !== 'undefined') {
-				$progressFill.css('width', data.progress + '%');
-				$progressText.text(Math.round(data.progress * 10) / 10 + '%');
+				var progress = parseFloat(data.progress);
+				if (isNaN(progress) || progress < 0) {
+					progress = 0;
+				} else if (progress > 100) {
+					progress = 100;
+				}
+				$progressFill.css('width', progress + '%');
+				$progressText.text(Math.round(progress * 10) / 10 + '%');
 			}
 
 			if (data.status && data.status.phase) {
@@ -334,16 +344,19 @@
 				closeModal();
 
 				if (!response || !response.success || !response.data || !response.data.url) {
+					alert((response && response.data && response.data.message) || ylcAdmin.strings.error);
 					return;
 				}
 
 				// Update row status using .text() to prevent DOM injection.
 				var urlData = response.data.url;
+				var allowedStatuses = ['ok', 'broken', 'warning', 'ignored', 'error', 'redirect', 'pending', 'valid'];
+				var safeStatus = allowedStatuses.indexOf(urlData.status) !== -1 ? urlData.status : 'unknown';
 				var $statusCell = $row.find('.ylc-status');
 				$statusCell
 					.removeClass()
-					.addClass('ylc-status ylc-status-' + urlData.status)
-					.text(capitalizeFirst(urlData.status));
+					.addClass('ylc-status ylc-status-' + safeStatus)
+					.text(capitalizeFirst(safeStatus));
 
 				var $codeCell = $row.find('.ylc-code');
 				$codeCell.text(urlData.http_code || '\u2014');
@@ -387,6 +400,38 @@
 				$row.fadeOut(function() {
 					$(this).remove();
 				});
+			},
+			error: function() {
+				alert(ylcAdmin.strings.error);
+			}
+		});
+	}
+
+	/**
+	 * Handle unignore link click.
+	 *
+	 * @param {Event} e Click event.
+	 */
+	function handleUnignoreLink(e) {
+		e.preventDefault();
+
+		var $button = $(this);
+		var linkId = $button.data('link-id');
+
+		$.ajax({
+			url: ylcAdmin.ajaxUrl,
+			type: 'POST',
+			data: {
+				action: 'yoko_lc_unignore_link',
+				link_id: linkId,
+				nonce: ylcAdmin.nonce
+			},
+			success: function(response) {
+				if (!response || !response.success) {
+					alert((response && response.data && response.data.message) || ylcAdmin.strings.error);
+					return;
+				}
+				location.reload();
 			},
 			error: function() {
 				alert(ylcAdmin.strings.error);

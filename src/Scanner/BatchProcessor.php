@@ -257,25 +257,86 @@ class BatchProcessor {
 		$total_urls = $this->url_repository->count( Url::STATUS_PENDING );
 		$last_id    = $after_id;
 
-		$actual_checked = 0;
+		// Separate URLs into external and internal arrays.
+		$external_urls = array();
+		$internal_urls = array();
 		foreach ( $urls as $url ) {
+			if ( $url->is_internal ) {
+				$internal_urls[] = $url;
+			} else {
+				$external_urls[ $url->url ] = $url;
+			}
+		}
+
+		$actual_checked = 0;
+
+		// Process external URLs in parallel via check_batch().
+		if ( ! empty( $external_urls ) ) {
+			$url_strings = array_keys( $external_urls );
+			$results     = $this->url_checker->check_batch( $url_strings );
+
+			if ( is_array( $results ) && ! empty( $results ) ) {
+				foreach ( $external_urls as $url_string => $url ) {
+					if ( isset( $results[ $url_string ] ) ) {
+						$result = $results[ $url_string ];
+
+						$url->status         = $result->status;
+						$url->http_code      = $result->http_code;
+						$url->final_url      = $result->final_url;
+						$url->redirect_count = $result->redirect_count;
+						$url->response_time  = $result->response_time;
+						$url->error_type     = $result->error_type;
+						$url->error_message  = $result->error_message;
+						$url->last_checked   = current_time( 'mysql', true );
+						$url->check_count    = ( $url->check_count ?? 0 ) + 1;
+
+						try {
+							$this->url_repository->update( $url );
+							++$actual_checked;
+
+							/** This action is documented in BatchProcessor::check_url() */
+							do_action( 'yoko_lc_url_checked', $url, $result );
+						} catch ( \Throwable $e ) {
+							Logger::error( 'Failed to update URL after parallel check', array( 'url_id' => $url->id, 'error' => $e->getMessage() ) );
+						}
+					} else {
+						// No result for this URL; fall back to sequential check.
+						try {
+							$this->check_url( $url );
+							++$actual_checked;
+						} catch ( \Throwable $e ) {
+							Logger::error( 'URL check failed', array( 'url_id' => $url->id, 'error' => $e->getMessage() ) );
+							$this->mark_url_error( $url, $e->getMessage() );
+							++$actual_checked;
+						}
+					}
+					$last_id = $url->id;
+				}
+			} else {
+				// Parallel failed entirely, fall back to sequential.
+				foreach ( $external_urls as $url ) {
+					try {
+						$this->check_url( $url );
+						++$actual_checked;
+					} catch ( \Throwable $e ) {
+						Logger::error( 'URL check failed', array( 'url_id' => $url->id, 'error' => $e->getMessage() ) );
+						$this->mark_url_error( $url, $e->getMessage() );
+						++$actual_checked;
+					}
+					$last_id = $url->id;
+				}
+			}
+		}
+
+		// Process internal URLs sequentially (they use WordPress functions).
+		foreach ( $internal_urls as $url ) {
 			try {
 				$this->check_url( $url );
 				++$actual_checked;
 			} catch ( \Throwable $e ) {
-				// Log error but continue with other URLs.
 				Logger::error( 'URL check failed', array( 'url_id' => $url->id, 'error' => $e->getMessage() ) );
-				// Mark as error so we don't retry immediately.
-				$url->status        = Url::STATUS_ERROR;
-				$url->error_message = substr( $e->getMessage(), 0, 255 );
-				$url->last_checked  = current_time( 'mysql' );
-				$url->check_count   = ( $url->check_count ?? 0 ) + 1;
-				try {
-					$this->url_repository->update( $url );
-					++$actual_checked;
-				} catch ( \Throwable $update_error ) {
-					Logger::error( 'Failed to update URL', array( 'url_id' => $url->id, 'error' => $update_error->getMessage() ) );
-				}
+				$this->mark_url_error( $url, $e->getMessage() );
+				++$actual_checked;
 			}
 			$last_id = $url->id;
 		}
@@ -356,6 +417,30 @@ class BatchProcessor {
 		 * @param \YokoLinkChecker\Checker\CheckResult $result Check result.
 		 */
 		do_action( 'yoko_lc_url_checked', $url, $result );
+	}
+
+	/**
+	 * Mark a URL as errored when an exception is caught during checking.
+	 *
+	 * Centralises the error-marking logic so that both sequential and parallel
+	 * fallback paths handle failures consistently.
+	 *
+	 * @since 1.0.9
+	 * @param Url    $url           URL model.
+	 * @param string $error_message Error message from the exception.
+	 * @return void
+	 */
+	private function mark_url_error( Url $url, string $error_message ): void {
+		$url->status        = Url::STATUS_ERROR;
+		$url->error_message = substr( $error_message, 0, 255 );
+		$url->last_checked  = current_time( 'mysql', true );
+		$url->check_count   = ( $url->check_count ?? 0 ) + 1;
+
+		try {
+			$this->url_repository->update( $url );
+		} catch ( \Throwable $update_error ) {
+			Logger::error( 'Failed to update URL after error', array( 'url_id' => $url->id, 'error' => $update_error->getMessage() ) );
+		}
 	}
 
 	/**
@@ -445,10 +530,11 @@ class BatchProcessor {
 	private function check_internal_url_via_http( Url $url ): void {
 		// Use a short timeout for internal requests (same server = fast).
 		$args = array(
-			'timeout'     => 3,
-			'redirection' => 3,
-			'sslverify'   => false, // Same server, skip SSL verification.
-			'user-agent'  => 'Yoko Link Checker Internal Check',
+			'timeout'            => 3,
+			'redirection'        => 3,
+			'sslverify'          => false, // Same server, skip SSL verification.
+			'reject_unsafe_urls' => true,  // WordPress core SSRF protection.
+			'user-agent'         => 'Yoko Link Checker Internal Check',
 		);
 
 		/**
