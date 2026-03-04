@@ -591,7 +591,7 @@ class ScanOrchestrator {
 			$progress = $total > 0 ? min( ( $done / $total ) * 50.0, 50.0 ) : 0.0;
 		} elseif ( Scan::PHASE_CHECKING === $scan->current_phase ) {
 			// Use current pending count + checked for accurate total.
-			$pending  = $this->url_repository->count_by_status( \Jeremie\YokoLinkChecker\Model\Url::STATUS_PENDING );
+			$pending  = $this->url_repository->count_by_status( \YokoLinkChecker\Model\Url::STATUS_PENDING );
 			$done     = $scan->checked_urls;
 			$total    = $pending + $done; // Dynamic total.
 			$progress = 50.0 + ( $total > 0 ? min( ( $done / $total ) * 50.0, 50.0 ) : 0.0 );
