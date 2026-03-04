@@ -350,30 +350,4 @@ final class UrlNormalizer {
 		return $url_host === $home_host;
 	}
 
-	/**
-	 * Get the home URL.
-	 *
-	 * @since 1.0.0
-	 * @return string
-	 */
-	public function get_home_url(): string {
-		return $this->home_url;
-	}
-
-	/**
-	 * Extract domain from URL.
-	 *
-	 * @since 1.0.0
-	 * @param string $url URL to extract domain from.
-	 * @return string|null Domain or null if invalid.
-	 */
-	public function get_domain( string $url ): ?string {
-		$parts = wp_parse_url( $url );
-
-		if ( ! $parts || ! isset( $parts['host'] ) ) {
-			return null;
-		}
-
-		return strtolower( $parts['host'] );
-	}
 }

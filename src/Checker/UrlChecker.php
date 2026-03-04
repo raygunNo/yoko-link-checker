@@ -261,42 +261,257 @@ final class UrlChecker {
 	}
 
 	/**
-	 * Check multiple URLs.
+	 * Check multiple URLs with parallel HTTP requests.
+	 *
+	 * URLs are grouped into chunks and checked concurrently using the WordPress
+	 * bundled Requests library. Falls back to sequential processing if parallel
+	 * requests fail.
 	 *
 	 * @since 1.0.0
+	 * @since 1.0.9 Added parallel request support.
 	 * @param array<string> $urls URLs to check.
 	 * @return array<string, CheckResult> Results keyed by URL.
 	 */
 	public function check_batch( array $urls ): array {
+		if ( empty( $urls ) ) {
+			return array();
+		}
+
+		/**
+		 * Filters the number of concurrent requests in a parallel batch.
+		 *
+		 * @since 1.0.9
+		 * @param int $batch_size Number of concurrent requests. Default 5.
+		 */
+		$batch_size = (int) apply_filters( 'yoko_lc_parallel_batch_size', 5 );
+		$batch_size = max( 1, min( $batch_size, 10 ) );
+
 		$results = array();
+		$chunks  = array_chunk( $urls, $batch_size );
 
-		foreach ( $urls as $url ) {
-			$results[ $url ] = $this->check( $url );
+		foreach ( $chunks as $chunk ) {
+			$chunk_results = $this->check_batch_parallel( $chunk );
 
-			// Small delay between requests to avoid rate limiting.
-			usleep( 100000 ); // 100ms.
+			if ( false === $chunk_results ) {
+				Logger::debug( 'Parallel batch failed, falling back to sequential', array( 'urls_count' => count( $chunk ) ) );
+				foreach ( $chunk as $url ) {
+					$results[ $url ] = $this->check( $url );
+					usleep( 100000 );
+				}
+			} else {
+				$results = array_merge( $results, $chunk_results );
+			}
 		}
 
 		return $results;
 	}
 
 	/**
-	 * Get the HTTP client.
+	 * Process a chunk of URLs in parallel using the Requests library.
 	 *
-	 * @since 1.0.0
-	 * @return HttpClient
+	 * @since 1.0.9
+	 * @param array<string> $urls URLs to check concurrently.
+	 * @return array<string, CheckResult>|false Results keyed by URL, or false on failure.
 	 */
-	public function get_http_client(): HttpClient {
-		return $this->http_client;
+	private function check_batch_parallel( array $urls ): array|false {
+		try {
+			$head_urls = array();
+			$get_urls  = array();
+
+			foreach ( $urls as $url ) {
+				if ( $this->should_use_head( $url ) ) {
+					$head_urls[] = $url;
+				} else {
+					$get_urls[] = $url;
+				}
+			}
+
+			$results = array();
+
+			if ( ! empty( $head_urls ) ) {
+				$head_results = $this->send_parallel_requests( $head_urls, 'HEAD' );
+
+				if ( false === $head_results ) {
+					return false;
+				}
+
+				$retry_urls = array();
+
+				foreach ( $head_results as $url => $result ) {
+					if ( $this->should_retry_with_get( $result ) ) {
+						Logger::debug( 'HEAD inconclusive in parallel batch, queuing GET retry', array( 'url' => $url ) );
+						$retry_urls[] = $url;
+					} else {
+						$results[ $url ] = $result;
+					}
+				}
+
+				$get_urls = array_merge( $get_urls, $retry_urls );
+			}
+
+			if ( ! empty( $get_urls ) ) {
+				$get_results = $this->send_parallel_requests( $get_urls, 'GET' );
+
+				if ( false === $get_results ) {
+					foreach ( $get_urls as $url ) {
+						$results[ $url ] = $this->check_with_get( $url );
+						usleep( 100000 );
+					}
+				} else {
+					$results = array_merge( $results, $get_results );
+				}
+			}
+
+			return $results;
+		} catch ( \Throwable $e ) {
+			Logger::debug( 'Parallel batch exception', array( 'error' => $e->getMessage() ) );
+			return false;
+		}
 	}
 
 	/**
-	 * Get the status classifier.
+	 * Send parallel HTTP requests using the WordPress bundled Requests library.
 	 *
-	 * @since 1.0.0
-	 * @return StatusClassifier
+	 * @since 1.0.9
+	 * @param array<string> $urls   URLs to request.
+	 * @param string        $method HTTP method ('HEAD' or 'GET').
+	 * @return array<string, CheckResult>|false Results keyed by URL, or false on failure.
 	 */
-	public function get_classifier(): StatusClassifier {
-		return $this->classifier;
+	private function send_parallel_requests( array $urls, string $method = 'HEAD' ): array|false {
+		$requests_class = null;
+
+		if ( class_exists( '\WpOrg\Requests\Requests' ) ) {
+			$requests_class = '\WpOrg\Requests\Requests';
+		} elseif ( class_exists( '\Requests' ) ) {
+			$requests_class = '\Requests';
+		}
+
+		if ( null === $requests_class ) {
+			Logger::debug( 'Requests library not available for parallel requests' );
+			return false;
+		}
+
+		$wp_args = $this->http_client->get_request_args();
+
+		$headers = array(
+			'User-Agent'      => $wp_args['user-agent'] ?? '',
+			'Accept'          => $wp_args['headers']['Accept'] ?? 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+			'Accept-Language' => $wp_args['headers']['Accept-Language'] ?? 'en-US,en;q=0.5',
+			'Connection'      => 'close',
+		);
+
+		$options = array(
+			'timeout'          => $wp_args['timeout'] ?? 8,
+			'connect_timeout'  => $wp_args['connect_timeout'] ?? 5,
+			'follow_redirects' => true,
+			'redirects'        => $wp_args['redirection'] ?? 3,
+			'verify'           => $wp_args['sslverify'] ?? true,
+		);
+
+		$requests   = array();
+		$start_time = microtime( true );
+
+		foreach ( $urls as $url ) {
+			$requests[ $url ] = array(
+				'url'     => $url,
+				'headers' => $headers,
+				'type'    => $method,
+				'options' => $options,
+			);
+		}
+
+		try {
+			/** @var array<string, \WpOrg\Requests\Response|\WpOrg\Requests\Exception> $responses */
+			$responses = $requests_class::request_multiple( $requests, $options );
+		} catch ( \Throwable $e ) {
+			Logger::debug( 'Parallel request_multiple failed', array( 'error' => $e->getMessage() ) );
+			return false;
+		}
+
+		$results      = array();
+		$elapsed_time = (int) round( ( microtime( true ) - $start_time ) * 1000 );
+		$time_per_url = count( $urls ) > 0 ? (int) round( $elapsed_time / count( $urls ) ) : 0;
+
+		foreach ( $urls as $url ) {
+			if ( ! isset( $responses[ $url ] ) ) {
+				$results[ $url ] = CheckResult::error(
+					$url,
+					'broken',
+					'parallel_request_failed',
+					__( 'No response received from parallel request.', 'yoko-link-checker' ),
+					null,
+					$time_per_url
+				);
+				continue;
+			}
+
+			$response = $responses[ $url ];
+
+			if ( $response instanceof \Exception ) {
+				$error_message = $response->getMessage();
+				$error_type    = 'http_request_failed';
+
+				if ( str_contains( strtolower( $error_message ), 'ssl' ) || str_contains( strtolower( $error_message ), 'certificate' ) ) {
+					$error_type = 'ssl_error';
+				} elseif ( str_contains( strtolower( $error_message ), 'resolve' ) || str_contains( strtolower( $error_message ), 'dns' ) ) {
+					$error_type = 'dns_error';
+				} elseif ( str_contains( strtolower( $error_message ), 'timed out' ) || str_contains( strtolower( $error_message ), 'timeout' ) ) {
+					$error_type = 'timeout';
+				} elseif ( str_contains( strtolower( $error_message ), 'connection' ) || str_contains( strtolower( $error_message ), 'refused' ) ) {
+					$error_type = 'connection_error';
+				}
+
+				$status = $this->classifier->classify( null, $error_type, $error_message, $url );
+
+				$results[ $url ] = CheckResult::error(
+					$url,
+					$status,
+					$error_type,
+					$error_message,
+					null,
+					$time_per_url
+				);
+				continue;
+			}
+
+			$http_code  = (int) $response->status_code;
+			$final_url  = $url;
+			$redirects  = 0;
+
+			if ( ! empty( $response->history ) ) {
+				$redirects = count( $response->history );
+			}
+			if ( ! empty( $response->url ) && $response->url !== $url ) {
+				$final_url = $response->url;
+			}
+
+			$status = $this->classifier->classify( $http_code, null, null, $url, $final_url );
+
+			if ( Url::STATUS_VALID === $status && $final_url !== $url ) {
+				$status = Url::STATUS_REDIRECT;
+			}
+
+			$response_headers = array();
+			if ( is_array( $response->headers ) ) {
+				$response_headers = $response->headers;
+			} elseif ( is_object( $response->headers ) && method_exists( $response->headers, 'getAll' ) ) {
+				$response_headers = $response->headers->getAll();
+			}
+
+			$results[ $url ] = new CheckResult(
+				$url,
+				$status,
+				$http_code,
+				$final_url !== $url ? $final_url : null,
+				$redirects,
+				$time_per_url,
+				null,
+				null,
+				$response_headers
+			);
+		}
+
+		return $results;
 	}
+
 }

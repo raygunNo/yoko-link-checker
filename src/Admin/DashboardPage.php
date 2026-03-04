@@ -12,6 +12,7 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker\Admin;
 
+use YokoLinkChecker\Repository\LinkRepository;
 use YokoLinkChecker\Repository\UrlRepository;
 use YokoLinkChecker\Repository\ScanRepository;
 use YokoLinkChecker\Scanner\ScanOrchestrator;
@@ -23,6 +24,13 @@ use YokoLinkChecker\Model\Url;
  * @since 1.0.0
  */
 class DashboardPage {
+
+	/**
+	 * Link repository instance.
+	 *
+	 * @var LinkRepository
+	 */
+	private LinkRepository $link_repository;
 
 	/**
 	 * URL repository instance.
@@ -49,15 +57,18 @@ class DashboardPage {
 	 * Constructor.
 	 *
 	 * @since 1.0.0
+	 * @param LinkRepository   $link_repository   Link repository.
 	 * @param UrlRepository    $url_repository    URL repository.
 	 * @param ScanRepository   $scan_repository   Scan repository.
 	 * @param ScanOrchestrator $scan_orchestrator Scan orchestrator.
 	 */
 	public function __construct(
+		LinkRepository $link_repository,
 		UrlRepository $url_repository,
 		ScanRepository $scan_repository,
 		ScanOrchestrator $scan_orchestrator
 	) {
+		$this->link_repository   = $link_repository;
 		$this->url_repository    = $url_repository;
 		$this->scan_repository   = $scan_repository;
 		$this->scan_orchestrator = $scan_orchestrator;
@@ -70,10 +81,11 @@ class DashboardPage {
 	 * @return void
 	 */
 	public function render(): void {
-		$stats            = $this->get_stats();
+		$status_counts    = $this->url_repository->get_status_counts();
+		$stats            = $this->get_stats( $status_counts );
 		$scan_status      = $this->scan_orchestrator->get_status();
-		$recent_broken    = $this->get_recent_broken();
-		$status_breakdown = $this->get_status_breakdown();
+		$recent_broken    = $this->link_repository->get_recent_broken();
+		$status_breakdown = $this->get_status_breakdown( $status_counts );
 
 		include YOKO_LC_PLUGIN_DIR . 'templates/admin/dashboard.php';
 	}
@@ -81,32 +93,42 @@ class DashboardPage {
 	/**
 	 * Get link statistics.
 	 *
+	 * Uses pre-fetched status counts from a single GROUP BY query
+	 * instead of firing individual COUNT queries per status.
+	 *
 	 * @since 1.0.0
+	 * @param array<string, int> $status_counts Status counts from UrlRepository::get_status_counts().
 	 * @return array
 	 */
-	private function get_stats(): array {
+	private function get_stats( array $status_counts ): array {
+		$total = array_sum( $status_counts );
+
 		return array(
-			'total_urls'  => $this->url_repository->count(),
-			'broken'      => $this->url_repository->count( Url::STATUS_BROKEN ),
-			'warnings'    => $this->url_repository->count( Url::STATUS_WARNING ),
-			'redirects'   => $this->url_repository->count( Url::STATUS_REDIRECT ),
-			'valid'       => $this->url_repository->count( Url::STATUS_VALID ),
-			'pending'     => $this->url_repository->count( Url::STATUS_PENDING ),
-			'blocked'     => $this->url_repository->count( Url::STATUS_BLOCKED ),
-			'timeouts'    => $this->url_repository->count( Url::STATUS_TIMEOUT ),
-			'errors'      => $this->url_repository->count( Url::STATUS_ERROR ),
-			'total_scans' => count( $this->scan_repository->get_recent( 100 ) ),
-			'last_scan'   => $this->get_last_completed_scan(),
+			'total_urls'  => $total,
+			'broken'      => $status_counts[ Url::STATUS_BROKEN ] ?? 0,
+			'warnings'    => $status_counts[ Url::STATUS_WARNING ] ?? 0,
+			'redirects'   => $status_counts[ Url::STATUS_REDIRECT ] ?? 0,
+			'valid'       => $status_counts[ Url::STATUS_VALID ] ?? 0,
+			'pending'     => $status_counts[ Url::STATUS_PENDING ] ?? 0,
+			'blocked'     => $status_counts[ Url::STATUS_BLOCKED ] ?? 0,
+			'timeouts'    => $status_counts[ Url::STATUS_TIMEOUT ] ?? 0,
+			'errors'      => $status_counts[ Url::STATUS_ERROR ] ?? 0,
+			'total_scans' => $this->scan_repository->count_all(),
+			'last_scan'   => $this->scan_repository->get_last_completed(),
 		);
 	}
 
 	/**
 	 * Get status breakdown for chart.
 	 *
+	 * Uses pre-fetched status counts from a single GROUP BY query
+	 * instead of firing individual COUNT queries per status.
+	 *
 	 * @since 1.0.0
+	 * @param array<string, int> $status_counts Status counts from UrlRepository::get_status_counts().
 	 * @return array
 	 */
-	private function get_status_breakdown(): array {
+	private function get_status_breakdown( array $status_counts ): array {
 		$statuses = array(
 			Url::STATUS_VALID    => array(
 				'label' => __( 'Valid', 'yoko-link-checker' ),
@@ -141,7 +163,7 @@ class DashboardPage {
 		$breakdown = array();
 
 		foreach ( $statuses as $status => $config ) {
-			$count = $this->url_repository->count( $status );
+			$count = $status_counts[ $status ] ?? 0;
 			if ( $count > 0 ) {
 				$breakdown[] = array(
 					'status' => $status,
@@ -153,78 +175,6 @@ class DashboardPage {
 		}
 
 		return $breakdown;
-	}
-
-	/**
-	 * Get the last completed scan.
-	 *
-	 * @since 1.0.0
-	 * @return \YokoLinkChecker\Model\Scan|null
-	 */
-	private function get_last_completed_scan() {
-		$recent = $this->scan_repository->get_recent( 10 );
-		foreach ( $recent as $scan ) {
-			if ( \YokoLinkChecker\Model\Scan::STATUS_COMPLETED === $scan->status ) {
-				return $scan;
-			}
-		}
-		return null;
-	}
-
-	/**
-	 * Get recent broken links.
-	 *
-	 * @since 1.0.0
-	 * @return array
-	 */
-	private function get_recent_broken(): array {
-		global $wpdb;
-
-		$urls_table  = $wpdb->prefix . 'yoko_lc_urls';
-		$links_table = $wpdb->prefix . 'yoko_lc_links';
-
-		// phpcs:disable WordPress.DB.DirectDatabaseQuery
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names are safe.
-		$results = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT u.id, u.url, u.http_code, u.error_message, u.last_checked,
-				        l.source_id, l.source_type, l.anchor_text
-				 FROM {$urls_table} u
-				 LEFT JOIN {$links_table} l ON u.id = l.url_id
-				 WHERE u.status = %s
-				 ORDER BY u.last_checked DESC
-				 LIMIT 10",
-				Url::STATUS_BROKEN
-			)
-		);
-		// phpcs:enable
-
-		$broken = array();
-
-		foreach ( $results as $row ) {
-			$post_title = '';
-			$source_id  = $row->source_id ? (int) $row->source_id : 0;
-
-			// Only get post title for post source types.
-			if ( $source_id && in_array( $row->source_type, array( 'post', 'page' ), true ) ) {
-				$post       = get_post( $source_id );
-				$post_title = $post ? $post->post_title : '';
-			}
-
-			$broken[] = array(
-				'id'            => (int) $row->id,
-				'url'           => $row->url,
-				'http_code'     => (int) $row->http_code,
-				'error_message' => $row->error_message,
-				'last_checked'  => $row->last_checked,
-				'source_id'     => $source_id,
-				'source_type'   => $row->source_type ?? '',
-				'post_title'    => $post_title,
-				'anchor_text'   => $row->anchor_text,
-			);
-		}
-
-		return $broken;
 	}
 
 	/**

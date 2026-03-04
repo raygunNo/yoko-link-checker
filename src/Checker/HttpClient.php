@@ -50,15 +50,6 @@ final class HttpClient {
 	private bool $verify_ssl;
 
 	/**
-	 * Constructor.
-	 *
-	 * @since 1.0.0
-	 * @param int    $timeout       Request timeout.
-	 * @param int    $max_redirects Maximum redirects.
-	 * @param string $user_agent    User agent string.
-	 * @param bool   $verify_ssl    Whether to verify SSL.
-	 */
-	/**
 	 * Connection timeout in seconds.
 	 *
 	 * @var int
@@ -97,6 +88,14 @@ final class HttpClient {
 	 * @return array{response: array|WP_Error, time: int}
 	 */
 	public function head( string $url ): array {
+		$ssrf_error = $this->check_ssrf( $url );
+		if ( $ssrf_error ) {
+			return array(
+				'response' => $ssrf_error,
+				'time'     => 0,
+			);
+		}
+
 		$start = microtime( true );
 
 		$response = wp_remote_head(
@@ -120,6 +119,14 @@ final class HttpClient {
 	 * @return array{response: array|WP_Error, time: int}
 	 */
 	public function get( string $url ): array {
+		$ssrf_error = $this->check_ssrf( $url );
+		if ( $ssrf_error ) {
+			return array(
+				'response' => $ssrf_error,
+				'time'     => 0,
+			);
+		}
+
 		$start = microtime( true );
 
 		$response = wp_remote_get(
@@ -141,7 +148,7 @@ final class HttpClient {
 	 * @since 1.0.0
 	 * @return array<string, mixed>
 	 */
-	private function get_request_args(): array {
+	public function get_request_args(): array {
 		$args = array(
 			'timeout'         => $this->timeout,
 			'connect_timeout' => $this->connect_timeout,
@@ -174,17 +181,6 @@ final class HttpClient {
 	private function get_default_user_agent(): string {
 		$version = defined( 'YOKO_LC_VERSION' ) ? YOKO_LC_VERSION : '1.0.0';
 		return "YokoLinkChecker/{$version} (WordPress Link Checker; +https://example.com)";
-	}
-
-	/**
-	 * Check if response is a WP_Error.
-	 *
-	 * @since 1.0.0
-	 * @param mixed $response Response to check.
-	 * @return bool
-	 */
-	public function is_error( $response ): bool {
-		return is_wp_error( $response );
 	}
 
 	/**
@@ -312,5 +308,71 @@ final class HttpClient {
 		}
 
 		return $code ? $code : 'unknown_error';
+	}
+
+	/**
+	 * Check if a URL is blocked by SSRF protection.
+	 *
+	 * Returns a WP_Error if the URL points to a private/reserved IP range
+	 * and the filter does not allow it. Returns null if the request may proceed.
+	 *
+	 * @since 1.0.9
+	 * @param string $url URL to check.
+	 * @return WP_Error|null Error if blocked, null if allowed.
+	 */
+	private function check_ssrf( string $url ): ?WP_Error {
+		/**
+		 * Filters whether to allow requests to private/reserved IP ranges.
+		 *
+		 * Useful for development environments where the site may resolve
+		 * to a private IP address.
+		 *
+		 * @since 1.0.9
+		 * @param bool   $allow Whether to allow private URLs. Default false.
+		 * @param string $url   The URL being checked.
+		 */
+		if ( apply_filters( 'yoko_lc_allow_private_urls', false, $url ) ) {
+			return null;
+		}
+
+		if ( $this->is_private_url( $url ) ) {
+			return new WP_Error(
+				'ssrf_blocked',
+				__( 'Request to private/reserved IP range blocked.', 'yoko-link-checker' )
+			);
+		}
+
+		return null;
+	}
+
+	/**
+	 * Check if a URL resolves to a private or reserved IP range.
+	 *
+	 * @since 1.0.9
+	 * @param string $url URL to check.
+	 * @return bool True if the URL points to a private/reserved IP.
+	 */
+	private function is_private_url( string $url ): bool {
+		$host = wp_parse_url( $url, PHP_URL_HOST );
+		if ( ! $host ) {
+			return false;
+		}
+
+		// Check if host is an IP address.
+		$ip = filter_var( $host, FILTER_VALIDATE_IP );
+		if ( ! $ip ) {
+			// Resolve hostname to IP.
+			$ip = gethostbyname( $host );
+			if ( $ip === $host ) {
+				return false; // DNS resolution failed.
+			}
+		}
+
+		// Block private and reserved ranges.
+		if ( ! filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE ) ) {
+			return true;
+		}
+
+		return false;
 	}
 }

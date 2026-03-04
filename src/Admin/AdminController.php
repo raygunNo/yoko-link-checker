@@ -210,8 +210,12 @@ class AdminController {
 				'checking'      => __( 'Checking...', 'yoko-link-checker' ),
 				'clearing'      => __( 'Clearing...', 'yoko-link-checker' ),
 				'clearData'     => __( 'Clear All Scan Data', 'yoko-link-checker' ),
+				'startNewScan'  => __( 'Start New Scan', 'yoko-link-checker' ),
 				'complete'      => __( 'Complete', 'yoko-link-checker' ),
+				'dataCleared'   => __( 'All scan data has been cleared.', 'yoko-link-checker' ),
 				'error'         => __( 'An error occurred. Please try again.', 'yoko-link-checker' ),
+				/* translators: Label shown before the scan phase name, e.g. "Phase: Discovery" */
+				'phase'         => __( 'Phase:', 'yoko-link-checker' ),
 			),
 		);
 	}
@@ -247,7 +251,7 @@ class AdminController {
 			return;
 		}
 
-		if ( ! current_user_can( 'yoko_lc_manage_settings' ) ) {
+		if ( ! current_user_can( 'yoko_lc_manage_settings' ) && ! current_user_can( 'manage_options' ) ) {
 			add_settings_error( 'yoko_lc_settings', 'permission_error', __( 'Permission denied.', 'yoko-link-checker' ) );
 			return;
 		}

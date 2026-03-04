@@ -16,6 +16,7 @@ use YokoLinkChecker\Scanner\ScanOrchestrator;
 use YokoLinkChecker\Scanner\BatchProcessor;
 use YokoLinkChecker\Repository\UrlRepository;
 use YokoLinkChecker\Repository\LinkRepository;
+use YokoLinkChecker\Util\Logger;
 
 /**
  * AJAX handler class.
@@ -109,15 +110,9 @@ class AjaxHandler {
 		$this->verify_request( 'yoko_lc_manage_scans' );
 
 		try {
-			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( '[YLC Debug] start_scan AJAX called' );
-			}
+			Logger::debug( 'start_scan AJAX called' );
 			$scan_id = $this->scan_orchestrator->start_scan( 'full' );
-			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log,WordPress.PHP.DevelopmentFunctions.error_log_var_export
-				error_log( '[YLC Debug] start_scan returned: ' . var_export( $scan_id, true ) );
-			}
+			Logger::debug( 'start_scan returned', array( 'scan_id' => $scan_id ) );
 
 			if ( ! $scan_id ) {
 				wp_send_json_error(
@@ -134,13 +129,8 @@ class AjaxHandler {
 				)
 			);
 		} catch ( \Throwable $e ) {
-			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( '[YLC ERROR] start_scan exception: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() );
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( '[YLC ERROR] Stack trace: ' . $e->getTraceAsString() );
-			}
-			wp_send_json_error( array( 'message' => 'Error: ' . $e->getMessage() ) );
+			Logger::exception( $e );
+			wp_send_json_error( array( 'message' => __( 'An unexpected error occurred.', 'yoko-link-checker' ) ) );
 		}
 	}
 
@@ -231,33 +221,18 @@ class AjaxHandler {
 		try {
 			$status = $this->scan_orchestrator->get_status();
 
-			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( '[YLC Debug] get_scan_status called. Status: ' . wp_json_encode( $status ) );
-			}
+			Logger::debug( 'get_scan_status called', array( 'status' => $status ) );
 
-			// If scan is running, process a batch via AJAX to avoid WP-Cron dependency.
+			// Ensure WP-Cron is scheduled to process the next batch if scan is running.
 			if ( $status && 'running' === $status['status'] ) {
-				if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( '[YLC Debug] Processing batch for scan ID: ' . $status['scan_id'] );
+				if ( ! wp_next_scheduled( 'yoko_lc_process_scan_batch', array( $status['scan_id'] ) ) ) {
+					wp_schedule_single_event( time(), 'yoko_lc_process_scan_batch', array( $status['scan_id'] ) );
 				}
-				$this->scan_orchestrator->process_batch( $status['scan_id'] );
-				// Refresh status after processing.
-				$status = $this->scan_orchestrator->get_status();
-				if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-					// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-					error_log( '[YLC Debug] After batch, status: ' . wp_json_encode( $status ) );
-				}
+				spawn_cron();
 			}
 		} catch ( \Throwable $e ) {
-			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( '[YLC ERROR] get_scan_status exception: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine() );
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( '[YLC ERROR] Stack trace: ' . $e->getTraceAsString() );
-			}
-			wp_send_json_error( array( 'message' => 'Error: ' . $e->getMessage() ) );
+			Logger::exception( $e );
+			wp_send_json_error( array( 'message' => __( 'An unexpected error occurred.', 'yoko-link-checker' ) ) );
 			return;
 		}
 
@@ -332,7 +307,13 @@ class AjaxHandler {
 			wp_send_json_error( array( 'message' => __( 'Invalid link ID.', 'yoko-link-checker' ) ) );
 		}
 
-		$result = $this->link_repository->update( $link_id, array( 'ignored' => 1 ) );
+		$link = $this->link_repository->find( $link_id );
+
+		if ( ! $link ) {
+			wp_send_json_error( array( 'message' => __( 'Link not found.', 'yoko-link-checker' ) ) );
+		}
+
+		$result = $this->url_repository->mark_ignored( $link->url_id );
 
 		if ( ! $result ) {
 			wp_send_json_error( array( 'message' => __( 'Could not ignore link.', 'yoko-link-checker' ) ) );
@@ -365,7 +346,13 @@ class AjaxHandler {
 			wp_send_json_error( array( 'message' => __( 'Invalid link ID.', 'yoko-link-checker' ) ) );
 		}
 
-		$result = $this->link_repository->update( $link_id, array( 'ignored' => 0 ) );
+		$link = $this->link_repository->find( $link_id );
+
+		if ( ! $link ) {
+			wp_send_json_error( array( 'message' => __( 'Link not found.', 'yoko-link-checker' ) ) );
+		}
+
+		$result = $this->url_repository->unmark_ignored( $link->url_id );
 
 		if ( ! $result ) {
 			wp_send_json_error( array( 'message' => __( 'Could not un-ignore link.', 'yoko-link-checker' ) ) );
@@ -392,12 +379,12 @@ class AjaxHandler {
 		$this->verify_request( 'yoko_lc_view_results' );
 
 		$stats = array(
-			'total'    => $this->url_repository->count_all(),
-			'broken'   => $this->url_repository->count_by_status( 'broken' ),
-			'warning'  => $this->url_repository->count_by_status( 'warning' ),
-			'redirect' => $this->url_repository->count_by_status( 'redirect' ),
-			'valid'    => $this->url_repository->count_by_status( 'valid' ),
-			'pending'  => $this->url_repository->count_by_status( 'pending' ),
+			'total'    => $this->url_repository->count(),
+			'broken'   => $this->url_repository->count( 'broken' ),
+			'warning'  => $this->url_repository->count( 'warning' ),
+			'redirect' => $this->url_repository->count( 'redirect' ),
+			'valid'    => $this->url_repository->count( 'valid' ),
+			'pending'  => $this->url_repository->count( 'pending' ),
 		);
 
 		wp_send_json_success( $stats );
@@ -454,13 +441,22 @@ class AjaxHandler {
 		$urls_table  = $wpdb->prefix . 'yoko_lc_urls';
 		$scans_table = $wpdb->prefix . 'yoko_lc_scans';
 
-		// Truncate all tables.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names cannot be parameterized.
-		$wpdb->query( "TRUNCATE TABLE {$links_table}" );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names cannot be parameterized.
-		$wpdb->query( "TRUNCATE TABLE {$urls_table}" );
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names cannot be parameterized.
-		$wpdb->query( "TRUNCATE TABLE {$scans_table}" );
+		// Delete all data within a transaction for safety.
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names cannot be parameterized.
+		$wpdb->query( 'START TRANSACTION' );
+		$r1 = $wpdb->query( "DELETE FROM {$links_table}" );
+		$r2 = $wpdb->query( "DELETE FROM {$urls_table}" );
+		$r3 = $wpdb->query( "DELETE FROM {$scans_table}" );
+
+		if ( false === $r1 || false === $r2 || false === $r3 ) {
+			$wpdb->query( 'ROLLBACK' );
+			// phpcs:enable
+			wp_send_json_error( array( 'message' => __( 'Failed to clear data.', 'yoko-link-checker' ) ) );
+			return;
+		}
+
+		$wpdb->query( 'COMMIT' );
+		// phpcs:enable
 
 		// Clear any scheduled cron events.
 		wp_clear_scheduled_hook( 'yoko_lc_process_scan_batch' );

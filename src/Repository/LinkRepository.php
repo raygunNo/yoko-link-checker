@@ -105,9 +105,9 @@ final class LinkRepository {
 	 *
 	 * @since 1.0.0
 	 * @param Link $link Link entity to find or create.
-	 * @return Link The existing or newly created link.
+	 * @return Link|null The existing or newly created link, or null on failure.
 	 */
-	public function find_or_create( Link $link ): Link {
+	public function find_or_create( Link $link ): ?Link {
 		$existing = $this->find_existing(
 			$link->url_id,
 			$link->source_id,
@@ -133,9 +133,9 @@ final class LinkRepository {
 	 *
 	 * @since 1.0.0
 	 * @param Link $link Link entity.
-	 * @return Link Link with ID populated.
+	 * @return Link|null Link with ID populated, or null on failure.
 	 */
-	public function insert( Link $link ): Link {
+	public function insert( Link $link ): ?Link {
 		global $wpdb;
 
 		$now = current_time( 'mysql' );
@@ -148,11 +148,15 @@ final class LinkRepository {
 		$data = $link->to_row();
 
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery
-		$wpdb->insert(
+		$result = $wpdb->insert(
 			$this->table,
 			$data,
 			$this->get_format( $data )
 		);
+
+		if ( false === $result ) {
+			return null;
+		}
 
 		$link->id = (int) $wpdb->insert_id;
 
@@ -592,45 +596,145 @@ final class LinkRepository {
 	/**
 	 * Get all links for CSV export.
 	 *
-	 * @since 1.0.3
+	 * @since      1.0.3
+	 * @deprecated 1.0.9 Use stream_for_export() instead for memory-efficient streaming.
 	 * @return array<\stdClass>
 	 */
 	public function get_all_for_export(): array {
+		$rows = array();
+		foreach ( $this->stream_for_export() as $row ) {
+			$rows[] = $row;
+		}
+		return $rows;
+	}
+
+	/**
+	 * Stream links for CSV export using chunked queries.
+	 *
+	 * Uses LIMIT/OFFSET pagination and yields rows one at a time via a PHP
+	 * generator, ensuring constant memory usage regardless of dataset size.
+	 *
+	 * @since 1.0.9
+	 * @param int $chunk_size Number of rows to fetch per database query. Default 1000.
+	 * @return \Generator<int, \stdClass> Yields stdClass row objects with source_url populated.
+	 */
+	public function stream_for_export( int $chunk_size = 1000 ): \Generator {
 		global $wpdb;
 
-		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names cannot be parameterized.
-		$rows = $wpdb->get_results(
-			"SELECT 
-				u.url,
-				u.status,
-				u.http_code,
-				u.error_message,
-				u.last_checked,
-				l.anchor_text as link_text,
-				l.source_id,
-				l.source_type,
-				p.post_title,
-				p.post_type,
-				p.guid as source_guid
-			FROM {$this->table} l
-			JOIN {$this->urls_table} u ON l.url_id = u.id
-			LEFT JOIN {$wpdb->posts} p ON l.source_id = p.ID AND l.source_type = 'post'
-			ORDER BY u.status ASC, u.url ASC"
-		);
-		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		$chunk_size = max( 1, $chunk_size );
+		$offset     = 0;
 
-		// Add proper permalinks for each row.
-		if ( $rows ) {
+		do {
+			// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+			// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names are safe.
+			$rows = $wpdb->get_results(
+				$wpdb->prepare(
+					"SELECT
+						u.url,
+						u.status,
+						u.http_code,
+						u.error_message,
+						u.last_checked,
+						l.anchor_text as link_text,
+						l.source_id,
+						l.source_type,
+						p.post_title,
+						p.post_type,
+						p.guid as source_guid
+					FROM {$this->table} l
+					JOIN {$this->urls_table} u ON l.url_id = u.id
+					LEFT JOIN {$wpdb->posts} p ON l.source_id = p.ID AND l.source_type = 'post'
+					ORDER BY u.status ASC, u.url ASC
+					LIMIT %d OFFSET %d",
+					$chunk_size,
+					$offset
+				)
+			);
+			// phpcs:enable
+
+			if ( empty( $rows ) ) {
+				break;
+			}
+
+			// Prime post caches in a single query to avoid N+1 get_permalink() calls.
+			$post_ids = array();
+			foreach ( $rows as $row ) {
+				if ( ! empty( $row->source_id ) && 'post' === $row->source_type ) {
+					$post_ids[] = (int) $row->source_id;
+				}
+			}
+			if ( ! empty( $post_ids ) ) {
+				_prime_post_caches( array_unique( $post_ids ), true, false );
+			}
+
 			foreach ( $rows as $row ) {
 				if ( ! empty( $row->source_id ) && 'post' === $row->source_type ) {
 					$row->source_url = get_permalink( (int) $row->source_id );
 				} else {
 					$row->source_url = '';
 				}
+				yield $row;
 			}
+
+			$offset += $chunk_size;
+		} while ( count( $rows ) === $chunk_size );
+	}
+
+	/**
+	 * Get recent broken links with source and post data.
+	 *
+	 * Returns broken URLs joined with their link occurrences and post titles.
+	 *
+	 * @since 1.0.8
+	 * @param int $limit Maximum broken links to return.
+	 * @return array<array<string, mixed>>
+	 */
+	public function get_recent_broken( int $limit = 10 ): array {
+		global $wpdb;
+
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names are safe.
+		$results = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT u.id, u.url, u.http_code, u.error_message, u.last_checked,
+				        l.source_id, l.source_type, l.anchor_text,
+				        p.post_title
+				 FROM {$this->urls_table} u
+				 LEFT JOIN {$this->table} l ON u.id = l.url_id
+				 LEFT JOIN {$wpdb->posts} p ON l.source_id = p.ID
+				 WHERE u.status = %s
+				 ORDER BY u.last_checked DESC
+				 LIMIT %d",
+				Url::STATUS_BROKEN,
+				$limit
+			)
+		);
+		// phpcs:enable
+
+		$broken = array();
+
+		foreach ( $results as $row ) {
+			$source_id  = $row->source_id ? (int) $row->source_id : 0;
+			$post_title = '';
+
+			if ( $source_id && in_array( $row->source_type, array( 'post', 'page' ), true ) ) {
+				$post_title = $row->post_title ?? '';
+			}
+
+			$broken[] = array(
+				'id'            => (int) $row->id,
+				'url'           => $row->url,
+				'http_code'     => (int) $row->http_code,
+				'error_message' => $row->error_message,
+				'last_checked'  => $row->last_checked,
+				'source_id'     => $source_id,
+				'source_type'   => $row->source_type ?? '',
+				'post_title'    => $post_title,
+				'anchor_text'   => $row->anchor_text,
+			);
 		}
 
-		return $rows ? $rows : array();
+		return $broken;
 	}
 
 	/**

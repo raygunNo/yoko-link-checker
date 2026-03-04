@@ -42,12 +42,14 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	 * Remove options.
 	 */
 	$options = array(
-		'yoko_lc_db_version',
-		'yoko_lc_post_types',
-		'yoko_lc_check_timeout',
+		'yoko_lc_settings',
+		'yoko_lc_schema_version',
+		'yoko_lc_activated_at',
+		'yoko_lc_remove_data_on_uninstall',
 		'yoko_lc_auto_scan_enabled',
 		'yoko_lc_auto_scan_frequency',
-		'yoko_lc_remove_data_on_uninstall',
+		'yoko_lc_post_types',
+		'yoko_lc_check_timeout',
 	);
 
 	foreach ( $options as $option ) {

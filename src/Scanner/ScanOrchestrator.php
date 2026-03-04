@@ -16,6 +16,7 @@ namespace YokoLinkChecker\Scanner;
 use YokoLinkChecker\Repository\ScanRepository;
 use YokoLinkChecker\Repository\UrlRepository;
 use YokoLinkChecker\Model\Scan;
+use YokoLinkChecker\Util\Logger;
 
 /**
  * Scan orchestrator class.
@@ -86,40 +87,46 @@ class ScanOrchestrator {
 	 * @return int|false Scan ID or false on failure.
 	 */
 	public function start_scan( string $type = 'full' ) {
-		if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( '[YLC Debug] start_scan() called with type: ' . $type );
-		}
+		Logger::debug( 'start_scan() called', array( 'type' => $type ) );
 
 		// Check if a scan is already running.
 		$running = $this->scan_repository->get_running();
 		if ( $running ) {
-			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( '[YLC Debug] start_scan - A scan is already running: ID ' . $running->id );
+			// Check for stale scan (no progress in 30 minutes).
+			$stale_threshold = strtotime( '-30 minutes' );
+			$last_activity   = $this->get_scan_last_activity( $running->id );
+			$last_update     = $last_activity ? $last_activity : strtotime( $running->started_at );
+
+			if ( $last_update && $last_update < $stale_threshold ) {
+				Logger::debug( 'start_scan - Stale scan detected, failing it', array( 'scan_id' => $running->id ) );
+				$this->scan_repository->fail(
+					$running,
+					__( 'Scan timed out — no progress detected for 30 minutes.', 'yoko-link-checker' )
+				);
+
+				// Clean up cursor and activity options for the failed scan.
+				delete_option( "yoko_lc_scan_{$running->id}_cursor_discovery" );
+				delete_option( "yoko_lc_scan_{$running->id}_cursor_checking" );
+				delete_option( "yoko_lc_scan_{$running->id}_last_activity" );
+
+				// Clear any scheduled batches for the stale scan.
+				wp_clear_scheduled_hook( self::CRON_HOOK, array( $running->id ) );
+			} else {
+				Logger::debug( 'start_scan - A scan is already running', array( 'scan_id' => $running->id ) );
+				return false;
 			}
-			return false;
 		}
 
 		// Count total posts to scan.
 		$total_posts = $this->content_discovery->count_posts();
-		if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( '[YLC Debug] start_scan - Total posts to scan: ' . $total_posts );
-		}
+		Logger::debug( 'start_scan - Total posts to scan', array( 'total_posts' => $total_posts ) );
 
 		// Create scan record with proper arguments.
 		$scan = $this->scan_repository->create( $type );
-		if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( '[YLC Debug] start_scan - Created scan: ' . ( $scan ? 'ID ' . $scan->id : 'FAILED' ) );
-		}
+		Logger::debug( 'start_scan - Created scan', array( 'scan_id' => $scan ? $scan->id : null ) );
 
 		if ( ! $scan || ! $scan->id ) {
-			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( '[YLC Debug] start_scan - Failed to create scan record' );
-			}
+			Logger::debug( 'start_scan - Failed to create scan record' );
 			return false;
 		}
 
@@ -130,10 +137,7 @@ class ScanOrchestrator {
 		$scan->started_at    = current_time( 'mysql' );
 
 		$update_result = $this->scan_repository->update( $scan );
-		if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( '[YLC Debug] start_scan - Updated scan: ' . ( $update_result ? 'success' : 'failed' ) );
-		}
+		Logger::debug( 'start_scan - Updated scan', array( 'success' => (bool) $update_result ) );
 
 		$scan_id = $scan->id;
 
@@ -160,80 +164,61 @@ class ScanOrchestrator {
 	 * @return void
 	 */
 	public function process_batch( int $scan_id ): void {
-		$scan = $this->scan_repository->find( $scan_id );
+		$lock_key = 'yoko_lc_batch_lock_' . $scan_id;
 
-		if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( '[YLC Debug] process_batch - Scan ID: ' . $scan_id );
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( '[YLC Debug] process_batch - Scan found: ' . ( $scan ? 'yes' : 'no' ) );
-		}
-
-		if ( ! $scan ) {
-			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( '[YLC Debug] process_batch - No scan found, returning' );
-			}
+		// Prevent concurrent batch processing.
+		if ( get_transient( $lock_key ) ) {
+			Logger::debug( 'process_batch - Concurrent execution blocked', array( 'scan_id' => $scan_id ) );
 			return;
 		}
+		set_transient( $lock_key, true, 120 ); // 2-minute lock.
 
-		if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( '[YLC Debug] process_batch - Scan status: ' . $scan->status . ', phase: ' . $scan->current_phase );
+		try {
+			$scan = $this->scan_repository->find( $scan_id );
+			Logger::debug( 'process_batch', array( 'scan_id' => $scan_id, 'found' => (bool) $scan ) );
+
+			if ( ! $scan ) {
+				Logger::debug( 'process_batch - No scan found, returning' );
+				return;
+			}
+
+			Logger::debug( 'process_batch - Scan state', array( 'status' => $scan->status, 'phase' => $scan->current_phase ) );
+
+			if ( Scan::STATUS_RUNNING !== $scan->status ) {
+				Logger::debug( 'process_batch - Scan not running, returning' );
+				return;
+			}
+
+			// Record activity for stale scan detection.
+			$this->set_scan_last_activity( $scan_id );
+
+			$start_time = microtime( true );
+			$state      = null;
+
+			if ( Scan::PHASE_DISCOVERY === $scan->current_phase ) {
+				Logger::debug( 'Calling process_discovery_phase' );
+				$state = $this->process_discovery_phase( $scan );
+				Logger::debug( 'Discovery phase result', $state ? array( 'total' => $state->total, 'processed' => $state->processed, 'complete' => $state->complete ) : array() );
+			} elseif ( Scan::PHASE_CHECKING === $scan->current_phase ) {
+				Logger::debug( 'Calling process_checking_phase' );
+				$state = $this->process_checking_phase( $scan );
+			}
+
+			if ( ! $state ) {
+				Logger::debug( 'No state returned from phase processing' );
+				return;
+			}
+
+			$batch_time = microtime( true ) - $start_time;
+
+			// Log progress.
+			$this->log_progress( $scan_id, $state, $batch_time );
+
+			// Handle phase transitions and scheduling.
+			$this->handle_phase_completion( $scan_id, $state );
+		} finally {
+			delete_transient( $lock_key );
 		}
-
-		if ( Scan::STATUS_RUNNING !== $scan->status ) {
-			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( '[YLC Debug] process_batch - Scan not running, returning' );
-			}
-			return;
-		}
-
-		$start_time = microtime( true );
-		$state      = null;
-
-		if ( Scan::PHASE_DISCOVERY === $scan->current_phase ) {
-			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( '[YLC Debug] Calling process_discovery_phase' );
-			}
-			$state = $this->process_discovery_phase( $scan );
-			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log(
-					'[YLC Debug] Discovery phase result: ' . ( $state ? wp_json_encode(
-						array(
-							'total'     => $state->total,
-							'processed' => $state->processed,
-							'complete'  => $state->complete,
-						)
-					) : 'null' )
-				);
-			}
-		} elseif ( Scan::PHASE_CHECKING === $scan->current_phase ) {
-			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( '[YLC Debug] Calling process_checking_phase' );
-			}
-			$state = $this->process_checking_phase( $scan );
-		}
-
-		if ( ! $state ) {
-			if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-				// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-				error_log( '[YLC Debug] No state returned from phase processing' );
-			}
-			return;
-		}
-
-		$batch_time = microtime( true ) - $start_time;
-
-		// Log progress.
-		$this->log_progress( $scan_id, $state, $batch_time );
-
-		// Handle phase transitions and scheduling.
-		$this->handle_phase_completion( $scan_id, $state );
 	}
 
 	/**
@@ -338,7 +323,7 @@ class ScanOrchestrator {
 	 */
 	private function transition_to_checking( int $scan_id ): void {
 		// Count total URLs to check.
-		$total_urls = $this->url_repository->count_all();
+		$total_urls = $this->url_repository->count();
 
 		$this->scan_repository->update_phase( $scan_id, Scan::PHASE_CHECKING );
 
@@ -376,9 +361,10 @@ class ScanOrchestrator {
 		}
 		$this->scan_repository->complete( $scan );
 
-		// Clean up cursors.
+		// Clean up cursors and activity tracking.
 		delete_option( "yoko_lc_scan_{$scan_id}_cursor_discovery" );
 		delete_option( "yoko_lc_scan_{$scan_id}_cursor_checking" );
+		delete_option( "yoko_lc_scan_{$scan_id}_last_activity" );
 
 		/**
 		 * Fires when a scan completes.
@@ -473,9 +459,10 @@ class ScanOrchestrator {
 		// Clear scheduled batch.
 		wp_clear_scheduled_hook( self::CRON_HOOK, array( $scan_id ) );
 
-		// Clean up cursors.
+		// Clean up cursors and activity tracking.
 		delete_option( "yoko_lc_scan_{$scan_id}_cursor_discovery" );
 		delete_option( "yoko_lc_scan_{$scan_id}_cursor_checking" );
+		delete_option( "yoko_lc_scan_{$scan_id}_last_activity" );
 
 		/**
 		 * Fires when a scan is cancelled.
@@ -580,6 +567,35 @@ class ScanOrchestrator {
 	}
 
 	/**
+	 * Get last activity timestamp for a scan.
+	 *
+	 * Used by stale scan detection to determine if a running scan
+	 * has made progress recently.
+	 *
+	 * @since 1.0.8
+	 * @param int $scan_id Scan ID.
+	 * @return int|false Unix timestamp or false if not set.
+	 */
+	private function get_scan_last_activity( int $scan_id ) {
+		$value = get_option( "yoko_lc_scan_{$scan_id}_last_activity", false );
+		return false !== $value ? (int) $value : false;
+	}
+
+	/**
+	 * Record last activity timestamp for a scan.
+	 *
+	 * Called during batch processing to track scan progress
+	 * for stale scan detection.
+	 *
+	 * @since 1.0.8
+	 * @param int $scan_id Scan ID.
+	 * @return void
+	 */
+	private function set_scan_last_activity( int $scan_id ): void {
+		update_option( "yoko_lc_scan_{$scan_id}_last_activity", time(), false );
+	}
+
+	/**
 	 * Log progress.
 	 *
 	 * @since 1.0.0
@@ -589,25 +605,13 @@ class ScanOrchestrator {
 	 * @return void
 	 */
 	private function log_progress( int $scan_id, ScanState $state, float $batch_time ): void {
-		if ( ! defined( 'YOKO_LC_DEBUG' ) || ! YOKO_LC_DEBUG ) {
-			return;
-		}
-
-		$message = sprintf(
-			'Scan %d: %s phase - %d/%d (%.1f%%) - batch: %d items in %.2fs',
-			$scan_id,
-			$state->phase,
-			$state->processed,
-			$state->total,
-			$state->get_progress(),
-			$state->last_batch_count,
-			$batch_time
+		Logger::info(
+			sprintf( 'Scan %d: %s phase - %d/%d (%.1f%%)', $scan_id, $state->phase, $state->processed, $state->total, $state->get_progress() ),
+			array(
+				'batch_count' => $state->last_batch_count,
+				'batch_time'  => round( $batch_time, 2 ),
+			)
 		);
-
-		if ( defined( 'YOKO_LC_DEBUG' ) && YOKO_LC_DEBUG ) {
-			// phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-			error_log( '[YLC] ' . $message );
-		}
 	}
 
 	/**
@@ -637,7 +641,7 @@ class ScanOrchestrator {
 			$progress = $total > 0 ? min( ( $done / $total ) * 50.0, 50.0 ) : 0.0;
 		} elseif ( Scan::PHASE_CHECKING === $scan->current_phase ) {
 			// Use current pending count + checked for accurate total.
-			$pending  = $this->url_repository->count_by_status( \YokoLinkChecker\Model\Url::STATUS_PENDING );
+			$pending  = $this->url_repository->count( \YokoLinkChecker\Model\Url::STATUS_PENDING );
 			$done     = $scan->checked_urls;
 			$total    = $pending + $done; // Dynamic total.
 			$progress = 50.0 + ( $total > 0 ? min( ( $done / $total ) * 50.0, 50.0 ) : 0.0 );

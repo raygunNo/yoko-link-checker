@@ -100,7 +100,8 @@ final class Activator {
 			KEY is_internal (is_internal),
 			KEY next_check (next_check),
 			KEY is_ignored (is_ignored),
-			KEY status_ignored (status, is_ignored)
+			KEY status_ignored (status, is_ignored),
+			KEY status_ignored_id (status, is_ignored, id)
 		) {$charset_collate};";
 
 		// SQL for yoko_lc_links table.
@@ -162,39 +163,20 @@ final class Activator {
 	 * @return void
 	 */
 	private static function set_default_options(): void {
-		$defaults = array(
-			'yoko_lc_settings' => array(
-				// Scan settings.
-				'post_types'            => array( 'post', 'page' ),
-				'post_statuses'         => array( 'publish' ),
-				'batch_size_posts'      => 50,
-				'batch_size_urls'       => 20,
+		if ( false === get_option( 'yoko_lc_post_types' ) ) {
+			add_option( 'yoko_lc_post_types', array( 'post', 'page' ) );
+		}
 
-				// HTTP settings.
-				'request_timeout'       => 15,
-				'max_redirects'         => 5,
-				'user_agent'            => 'YokoLinkChecker/' . YOKO_LC_VERSION . ' (WordPress Link Checker)',
-				'verify_ssl'            => true,
+		if ( false === get_option( 'yoko_lc_check_timeout' ) ) {
+			add_option( 'yoko_lc_check_timeout', 30 );
+		}
 
-				// Rate limiting.
-				'rate_limit_per_domain' => 2, // Requests per second per domain.
-				'rate_limit_global'     => 10, // Total requests per second.
+		if ( false === get_option( 'yoko_lc_auto_scan_enabled' ) ) {
+			add_option( 'yoko_lc_auto_scan_enabled', false );
+		}
 
-				// Recheck settings.
-				'recheck_valid_days'    => 30,
-				'recheck_warning_days'  => 7,
-				'recheck_broken_days'   => 3,
-
-				// Scan triggers.
-				'scan_on_publish'       => false,
-				'scan_on_update'        => false,
-			),
-		);
-
-		foreach ( $defaults as $option_name => $default_value ) {
-			if ( false === get_option( $option_name ) ) {
-				add_option( $option_name, $default_value );
-			}
+		if ( false === get_option( 'yoko_lc_auto_scan_frequency' ) ) {
+			add_option( 'yoko_lc_auto_scan_frequency', 'weekly' );
 		}
 	}
 

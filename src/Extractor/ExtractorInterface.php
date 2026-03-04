@@ -31,14 +31,6 @@ interface ExtractorInterface {
 	public function get_id(): string;
 
 	/**
-	 * Get human-readable name.
-	 *
-	 * @since 1.0.0
-	 * @return string
-	 */
-	public function get_name(): string;
-
-	/**
 	 * Check if this extractor supports the given post.
 	 *
 	 * @since 1.0.0
@@ -55,14 +47,6 @@ interface ExtractorInterface {
 	 * @return array<ExtractedLink> Extracted links.
 	 */
 	public function extract( WP_Post $post ): array;
-
-	/**
-	 * Get the content fields this extractor processes.
-	 *
-	 * @since 1.0.0
-	 * @return array<string>
-	 */
-	public function get_fields(): array;
 
 	/**
 	 * Get priority for this extractor.
