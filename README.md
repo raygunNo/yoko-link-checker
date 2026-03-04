@@ -152,11 +152,29 @@ add_action( 'yoko_lc_scan_completed', fn($scan) => wp_mail(...) );
 ## Changelog
 
 ### 1.1.0
-- **Added**: Parallel HTTP requests for external URL checking
-- **Added**: SSRF protection blocking private/internal IP ranges
-- **Added**: Database schema version tracking for automatic upgrades
-- **Changed**: Improved PHP coding standards compliance (PSR-2)
-- **Fixed**: N+1 query patterns, race conditions, and various code quality issues
+Addresses all findings from comprehensive multi-agent code review.
+
+**Critical Fixes (P1):**
+- Fixed ignore/unignore targeting wrong table
+- Removed batch processing from AJAX status poll
+- Added stale scan recovery (30-min timeout)
+- Fixed schema version mismatch
+- Fixed ghost property `redirect_url` → `final_url`
+
+**Important Improvements (P2):**
+- Added parallel HTTP requests via `Requests::request_multiple()`
+- Replaced 16+ COUNT queries with single GROUP BY on dashboard
+- Added SSRF protection (private IP blocking)
+- Added concurrent batch execution locks
+- Fixed TOCTOU race condition in `find_or_create()`
+- Streaming CSV export with constant memory
+- Primed post caches to eliminate N+1 queries
+
+**Code Quality (P3):**
+- Removed 205 LOC dead code (UrlValidator)
+- Consolidated duplicate logic
+- Added composite database index
+- Full PSR-2 compliance
 
 ### 1.0.8
 - **Fixed**: Internal 404s now correctly flagged as broken instead of warning

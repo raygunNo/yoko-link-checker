@@ -9,23 +9,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.1.0] - 2026-03-03
 
+Addresses all findings from comprehensive multi-agent code review (5 P1 Critical, 16 P2 Important, 13 P3 Nice-to-Have).
+
 ### Added
-- Parallel HTTP requests for external URL checking
-- SSRF protection blocking private/internal IP ranges
-- Concurrent batch execution protection via transient locks
+- Parallel HTTP requests for external URL checking via `Requests::request_multiple()`
+- SSRF protection blocking private/internal IP ranges (127.x, 10.x, 192.168.x, etc.)
+- Concurrent batch execution protection via transient-based locks
+- Stale scan recovery with 30-minute timeout auto-failing stuck scans
 - Database schema version tracking for automatic upgrades
-- Composite index for improved query performance
+- Composite index `(status, is_ignored, id)` for improved query performance
+- Return value checks on all `$wpdb->insert()` calls
+- `manage_options` fallback to capability checks for settings
+- Polling timer cleanup on page unload
+- AJAX response validation in JavaScript
+- `set_service()` method for test dependency injection
+- Localized all hard-coded English strings in JavaScript
 
 ### Changed
+- Dashboard now uses single `GROUP BY` query instead of 16+ `COUNT` queries
+- CSV export streams with chunked queries for constant memory usage
+- Cron schedules filter registered persistently in `boot()` method
+- Exception messages sanitized in AJAX responses (no sensitive data leakage)
+- Consolidated 30+ inline debug blocks into Logger calls
+- Moved raw SQL from DashboardPage to LinkRepository
+- StatusClassifier injected into BatchProcessor (proper DI)
+- TRUNCATE operations wrapped in transaction with error handling
 - Improved PHP coding standards compliance (PSR-2)
 - Enhanced error logging with structured context arrays
-- Optimized CSV export with streaming output
 
 ### Fixed
-- Resolved N+1 query pattern in discovery phase
-- Fixed race condition in find-or-create URL logic
-- Corrected closing brace positioning per PSR-2
-- Fixed count() usage inside loop conditions
+- **P1**: Ignore/unignore now targets correct table (`urls.is_ignored`, not `links`)
+- **P1**: Removed batch processing from AJAX status poll (delegated to WP-Cron)
+- **P1**: Schema version mismatch between Plugin.php and Activator.php
+- **P1**: Ghost property `$url->redirect_url` → `$url->final_url`
+- **P2**: TOCTOU race condition in `find_or_create()` URL logic
+- **P2**: Associated links now cleaned up on URL deletion
+- **P2**: Stale options list in `uninstall.php` updated
+- **P2**: N+1 query pattern in discovery phase (post cache priming)
+- **P2**: N+1 queries in LinksListTable (batch post cache priming)
+- Closing brace positioning per PSR-2
+- `count()` usage inside loop conditions
+- Equals sign alignment in variable assignments
+- Associative array formatting (multi-line requirement)
+
+### Removed
+- Unused `UrlValidator` class (205 LOC dead code)
+- Unused `ExtractorRegistry`/`Interface` methods
+- Duplicate URL-skip logic (consolidated from 3 locations to 1)
+- Count method aliases from `UrlRepository`
+- Speculative code for unbuilt features
+- Dead grouped `yoko_lc_settings` option
 
 ## [1.0.8] - 2026-03-03
 
