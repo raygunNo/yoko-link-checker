@@ -29,7 +29,7 @@ $yoko_lc_current_url = admin_url( 'admin.php?page=yoko-link-checker-results' );
 			$yoko_lc_url   = add_query_arg( 'status', $yoko_lc_status, $yoko_lc_current_url );
 			$yoko_lc_class = ( $status_filter === $yoko_lc_status ) ? 'current' : '';
 
-			$yoko_lc_yoko_lc_filter_links[] = sprintf(
+			$yoko_lc_filter_links[] = sprintf(
 				'<li class="ylc-filter-%s"><a href="%s" class="%s">%s</a></li>',
 				esc_attr( $yoko_lc_status ),
 				esc_url( $yoko_lc_url ),
