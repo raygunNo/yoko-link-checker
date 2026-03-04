@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.5] - 2026-03-03
+
+### Fixed
+- Fixed CSV export outputting HTML instead of CSV data (headers sent before output)
+- Fixed bulk actions (Ignore, Un-ignore, Recheck) causing white screen or not working
+- Changed bulk actions form method from GET to POST
+- Added redirect after bulk action processing to prevent re-processing on refresh
+- Added `manage_options` capability fallback for bulk actions
+
+### Added
+- Status badges now have tooltips with descriptions explaining what each status means
+- Warning, Blocked, Timeout, Error, and Redirect statuses show detailed explanations
+- Error messages from the server are now displayed in status tooltips
+
 ## [1.0.4] - 2026-03-03
 
 ### Fixed
@@ -70,7 +84,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PHP 8.0+ support
 - WordPress 6.0+ support
 
-[Unreleased]: https://github.com/Yoko-Co/yoko-link-checker/compare/v1.0.4...HEAD
+[Unreleased]: https://github.com/Yoko-Co/yoko-link-checker/compare/v1.0.5...HEAD
+[1.0.5]: https://github.com/Yoko-Co/yoko-link-checker/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/Yoko-Co/yoko-link-checker/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/Yoko-Co/yoko-link-checker/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/Yoko-Co/yoko-link-checker/compare/v1.0.1...v1.0.2

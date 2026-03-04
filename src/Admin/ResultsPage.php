@@ -214,7 +214,7 @@ class ResultsPage {
 	 * @since 1.0.3
 	 * @return void
 	 */
-	private function handle_export(): void {
+	public function handle_export(): void {
 		$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
 
 		if ( ! wp_verify_nonce( $nonce, 'yoko_lc_export' ) ) {

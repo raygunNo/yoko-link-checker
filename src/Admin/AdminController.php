@@ -72,9 +72,24 @@ class AdminController {
 	public function register(): void {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_action( 'admin_init', array( $this, 'handle_early_actions' ) );
 
 		// Register AJAX handlers.
 		$this->ajax_handler->register();
+	}
+
+	/**
+	 * Handle actions that need to run before any output.
+	 *
+	 * @since 1.0.4
+	 * @return void
+	 */
+	public function handle_early_actions(): void {
+		// Handle CSV export early, before any output.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Nonce verified in the method.
+		if ( isset( $_GET['page'] ) && 'yoko-link-checker-results' === $_GET['page'] && isset( $_GET['action'] ) && 'export' === $_GET['action'] ) {
+			$this->results_page->handle_export();
+		}
 	}
 
 	/**

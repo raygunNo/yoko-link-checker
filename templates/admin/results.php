@@ -41,7 +41,7 @@ $yoko_lc_current_url = admin_url( 'admin.php?page=yoko-link-checker-results' );
 		?>
 	</ul>
 
-	<form id="ylc-links-filter" method="get">
+	<form id="ylc-links-filter" method="post">
 		<input type="hidden" name="page" value="yoko-link-checker-results">
 		<input type="hidden" name="status" value="<?php echo esc_attr( $status_filter ); ?>">
 		

@@ -198,7 +198,8 @@ class LinksListTable extends WP_List_Table {
 			return;
 		}
 
-		if ( ! current_user_can( 'yoko_lc_manage_scans' ) ) {
+		// Use manage_options as fallback if custom caps don't exist.
+		if ( ! current_user_can( 'yoko_lc_manage_scans' ) && ! current_user_can( 'manage_options' ) ) {
 			return;
 		}
 
@@ -210,16 +211,20 @@ class LinksListTable extends WP_List_Table {
 			return;
 		}
 
+		$processed = 0;
+
 		switch ( $action ) {
 			case 'ignore':
 				foreach ( $link_ids as $link_id ) {
 					$this->link_repository->update( $link_id, array( 'ignored' => 1 ) );
+					++$processed;
 				}
 				break;
 
 			case 'unignore':
 				foreach ( $link_ids as $link_id ) {
 					$this->link_repository->update( $link_id, array( 'ignored' => 0 ) );
+					++$processed;
 				}
 				break;
 
@@ -231,7 +236,16 @@ class LinksListTable extends WP_List_Table {
 				 * @param array $link_ids Link IDs to recheck.
 				 */
 				do_action( 'yoko_lc_recheck_links', $link_ids );
+				$processed = count( $link_ids );
 				break;
+		}
+
+		// Redirect to avoid re-processing on refresh.
+		if ( $processed > 0 ) {
+			$redirect_url = remove_query_arg( array( 'action', 'action2', 'link_ids', '_wpnonce' ) );
+			$redirect_url = add_query_arg( 'bulk_processed', $processed, $redirect_url );
+			wp_safe_redirect( $redirect_url );
+			exit;
 		}
 	}
 
@@ -332,7 +346,38 @@ class LinksListTable extends WP_List_Table {
 			Url::STATUS_ERROR    => __( 'Error', 'yoko-link-checker' ),
 		);
 
+		// Status descriptions for tooltips.
+		$status_descriptions = array(
+			Url::STATUS_WARNING  => __( 'The server returned a response that may indicate a problem. This could be a temporary issue or the site may block automated requests.', 'yoko-link-checker' ),
+			Url::STATUS_BLOCKED  => __( 'The request was blocked by the destination server. Many social media sites block automated link checking.', 'yoko-link-checker' ),
+			Url::STATUS_TIMEOUT  => __( 'The request timed out waiting for a response. The server may be slow or unreachable.', 'yoko-link-checker' ),
+			Url::STATUS_ERROR    => __( 'A connection error occurred. This may be a DNS, SSL, or network issue.', 'yoko-link-checker' ),
+			Url::STATUS_REDIRECT => __( 'This URL redirects to a different location. The link still works, but you may want to update it to the final destination.', 'yoko-link-checker' ),
+		);
+
 		$label = $status_labels[ $item->status ] ?? $item->status;
+
+		// Build tooltip from description and/or error message.
+		$tooltip_parts = array();
+
+		if ( isset( $status_descriptions[ $item->status ] ) ) {
+			$tooltip_parts[] = $status_descriptions[ $item->status ];
+		}
+
+		if ( ! empty( $item->error_message ) ) {
+			$tooltip_parts[] = $item->error_message;
+		}
+
+		$tooltip = implode( "\n\n", $tooltip_parts );
+
+		if ( $tooltip ) {
+			return sprintf(
+				'<span class="ylc-status ylc-status-%s" title="%s">%s</span>',
+				esc_attr( $item->status ),
+				esc_attr( $tooltip ),
+				esc_html( $label )
+			);
+		}
 
 		return sprintf(
 			'<span class="ylc-status ylc-status-%s">%s</span>',
