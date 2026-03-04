@@ -561,6 +561,37 @@ final class LinkRepository {
 	}
 
 	/**
+	 * Get all links for CSV export.
+	 *
+	 * @since 1.0.3
+	 * @return array<\stdClass>
+	 */
+	public function get_all_for_export(): array {
+		global $wpdb;
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$rows = $wpdb->get_results(
+			"SELECT 
+				u.url,
+				u.status,
+				u.http_code,
+				u.error_message,
+				u.last_checked,
+				l.anchor_text as link_text,
+				l.source_id,
+				l.source_type,
+				p.post_title,
+				p.post_type
+			FROM {$this->table} l
+			JOIN {$this->urls_table} u ON l.url_id = u.id
+			LEFT JOIN {$wpdb->posts} p ON l.source_id = p.ID AND l.source_type = 'post'
+			ORDER BY u.status ASC, u.url ASC"
+		);
+
+		return $rows ? $rows : array();
+	}
+
+	/**
 	 * Get sprintf format array for data.
 	 *
 	 * @since 1.0.0

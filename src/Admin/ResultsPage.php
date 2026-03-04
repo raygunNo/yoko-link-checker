@@ -75,6 +75,13 @@ class ResultsPage {
 	 * @return void
 	 */
 	private function handle_actions(): void {
+		// Handle export action first (doesn't require link_id).
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Nonce verified below.
+		if ( isset( $_GET['action'] ) && 'export' === $_GET['action'] ) {
+			$this->handle_export();
+			return;
+		}
+
 		// Handle bulk actions from list table.
 		if ( isset( $_POST['_wpnonce'] ) && isset( $_POST['action'] ) ) {
 			// Bulk actions are handled by the list table.
@@ -199,6 +206,75 @@ class ResultsPage {
 		 * @param int $link_id Link ID.
 		 */
 		do_action( 'yoko_lc_link_unignored', $link_id );
+	}
+
+	/**
+	 * Handle CSV export.
+	 *
+	 * @since 1.0.3
+	 * @return void
+	 */
+	private function handle_export(): void {
+		$nonce = isset( $_GET['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ) : '';
+
+		if ( ! wp_verify_nonce( $nonce, 'yoko_lc_export' ) ) {
+			wp_die( esc_html__( 'Security check failed.', 'yoko-link-checker' ) );
+		}
+
+		if ( ! current_user_can( 'yoko_lc_view_results' ) ) {
+			wp_die( esc_html__( 'Permission denied.', 'yoko-link-checker' ) );
+		}
+
+		// Get all links for export.
+		$links = $this->link_repository->get_all_for_export();
+
+		// Set headers for CSV download.
+		$filename = 'yoko-link-checker-export-' . gmdate( 'Y-m-d-His' ) . '.csv';
+		header( 'Content-Type: text/csv; charset=utf-8' );
+		header( 'Content-Disposition: attachment; filename=' . $filename );
+		header( 'Pragma: no-cache' );
+		header( 'Expires: 0' );
+
+		// Create output stream.
+		$output = fopen( 'php://output', 'w' );
+
+		// Write UTF-8 BOM for Excel compatibility.
+		fprintf( $output, chr( 0xEF ) . chr( 0xBB ) . chr( 0xBF ) );
+
+		// Write header row.
+		fputcsv(
+			$output,
+			array(
+				__( 'URL', 'yoko-link-checker' ),
+				__( 'Status', 'yoko-link-checker' ),
+				__( 'HTTP Code', 'yoko-link-checker' ),
+				__( 'Found In', 'yoko-link-checker' ),
+				__( 'Post Type', 'yoko-link-checker' ),
+				__( 'Link Text', 'yoko-link-checker' ),
+				__( 'Error Message', 'yoko-link-checker' ),
+				__( 'Last Checked', 'yoko-link-checker' ),
+			)
+		);
+
+		// Write data rows.
+		foreach ( $links as $link ) {
+			fputcsv(
+				$output,
+				array(
+					$link->url ?? '',
+					$link->status ?? '',
+					$link->http_code ?? '',
+					$link->post_title ?? '',
+					$link->post_type ?? '',
+					$link->link_text ?? '',
+					$link->error_message ?? '',
+					$link->last_checked ?? '',
+				)
+			);
+		}
+
+		fclose( $output );
+		exit;
 	}
 
 	/**

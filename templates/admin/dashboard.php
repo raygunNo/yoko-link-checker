@@ -24,6 +24,13 @@ $yoko_lc_is_scanning = $scan_status && 'running' === $scan_status['status'];
 	<div class="ylc-card ylc-scan-control">
 		<h2><?php esc_html_e( 'Scan', 'yoko-link-checker' ); ?></h2>
 		
+		<div class="ylc-notice ylc-notice-info">
+			<span class="dashicons dashicons-info"></span>
+			<span class="ylc-notice-content">
+				<?php esc_html_e( 'Please keep this page open while the scan is running. Navigating away will pause the scan.', 'yoko-link-checker' ); ?>
+			</span>
+		</div>
+		
 		<div class="ylc-scan-status" id="ylc-scan-status">
 			<?php if ( $yoko_lc_is_scanning ) : ?>
 				<div class="ylc-scanning">

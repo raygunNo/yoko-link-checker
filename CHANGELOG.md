@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.4] - 2026-03-03
+
+### Fixed
+- Fixed "Export to CSV" not working on results page
+- Fixed "Clear All Data" button not working
+
+### Added
+- CSV export now includes all link data with proper UTF-8 encoding
+- Info notice reminding users to keep the page open during scans
+
+### Changed
+- Improved card styling with accent border and enhanced shadow
+- Stat cards now have subtle hover animation
+- Updated border radius and shadow for modern appearance
+
 ## [1.0.3] - 2026-03-03
 
 ### Fixed
@@ -55,7 +70,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PHP 8.0+ support
 - WordPress 6.0+ support
 
-[Unreleased]: https://github.com/Yoko-Co/yoko-link-checker/compare/v1.0.3...HEAD
+[Unreleased]: https://github.com/Yoko-Co/yoko-link-checker/compare/v1.0.4...HEAD
+[1.0.4]: https://github.com/Yoko-Co/yoko-link-checker/compare/v1.0.3...v1.0.4
 [1.0.3]: https://github.com/Yoko-Co/yoko-link-checker/compare/v1.0.2...v1.0.3
 [1.0.2]: https://github.com/Yoko-Co/yoko-link-checker/compare/v1.0.1...v1.0.2
 [1.0.1]: https://github.com/Yoko-Co/yoko-link-checker/compare/v1.0.0...v1.0.1

@@ -94,6 +94,9 @@ class AjaxHandler {
 
 		// Stats.
 		add_action( 'wp_ajax_yoko_lc_get_stats', array( $this, 'get_stats' ) );
+
+		// Data management.
+		add_action( 'wp_ajax_yoko_lc_clear_data', array( $this, 'clear_data' ) );
 	}
 
 	/**
@@ -434,5 +437,38 @@ class AjaxHandler {
 				403
 			);
 		}
+	}
+
+	/**
+	 * Clear all scan data.
+	 *
+	 * @since 1.0.3
+	 * @return void
+	 */
+	public function clear_data(): void {
+		$this->verify_request( 'yoko_lc_manage_scans' );
+
+		global $wpdb;
+
+		$links_table = $wpdb->prefix . 'yoko_lc_links';
+		$urls_table  = $wpdb->prefix . 'yoko_lc_urls';
+		$scans_table = $wpdb->prefix . 'yoko_lc_scans';
+
+		// Truncate all tables.
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange
+		$wpdb->query( "TRUNCATE TABLE {$links_table}" );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange
+		$wpdb->query( "TRUNCATE TABLE {$urls_table}" );
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange
+		$wpdb->query( "TRUNCATE TABLE {$scans_table}" );
+
+		// Clear any scheduled cron events.
+		wp_clear_scheduled_hook( 'yoko_lc_process_scan_batch' );
+
+		wp_send_json_success(
+			array(
+				'message' => __( 'All scan data has been cleared.', 'yoko-link-checker' ),
+			)
+		);
 	}
 }

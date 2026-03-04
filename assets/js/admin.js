@@ -42,6 +42,9 @@
 		$(document).on('click', '.ylc-recheck-url', handleRecheckUrl);
 		$(document).on('click', '.ylc-ignore-link', handleIgnoreLink);
 
+		// Data management
+		$(document).on('click', '.ylc-clear-data', handleClearData);
+
 		// Modal close
 		$(document).on('click', '.ylc-modal-close', closeModal);
 		$(document).on('click', '.ylc-modal', function(e) {
@@ -370,6 +373,44 @@
 	 */
 	function closeModal() {
 		$('.ylc-modal').hide();
+	}
+
+	/**
+	 * Handle clear data click.
+	 *
+	 * @param {Event} e Click event.
+	 */
+	function handleClearData(e) {
+		e.preventDefault();
+
+		if (!confirm(ylcAdmin.strings.confirmClear || 'Are you sure you want to delete all scan data? This cannot be undone.')) {
+			return;
+		}
+
+		const $button = $(this);
+		$button.prop('disabled', true).text(ylcAdmin.strings.clearing || 'Clearing...');
+
+		$.ajax({
+			url: ylcAdmin.ajaxUrl,
+			type: 'POST',
+			data: {
+				action: 'yoko_lc_clear_data',
+				nonce: ylcAdmin.nonce
+			},
+			success: function(response) {
+				if (response.success) {
+					alert(response.data.message || 'All data cleared.');
+					location.reload();
+				} else {
+					alert((response.data && response.data.message) || ylcAdmin.strings.error);
+					$button.prop('disabled', false).text(ylcAdmin.strings.clearData || 'Clear All Scan Data');
+				}
+			},
+			error: function() {
+				alert(ylcAdmin.strings.error);
+				$button.prop('disabled', false).text(ylcAdmin.strings.clearData || 'Clear All Scan Data');
+			}
+		});
 	}
 
 	/**
