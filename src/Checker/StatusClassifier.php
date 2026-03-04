@@ -246,5 +246,4 @@ final class StatusClassifier {
 
 		return null;
 	}
-
 }

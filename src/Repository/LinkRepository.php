@@ -135,6 +135,7 @@ final class LinkRepository {
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name is safe.
 		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- $where uses placeholders built above.
+		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Placeholders are built dynamically.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT * FROM {$this->table} WHERE {$where}",

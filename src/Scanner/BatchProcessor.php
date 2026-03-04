@@ -240,11 +240,11 @@ class BatchProcessor {
 			$url_hash    = $normalizer->hash( $normalized );
 
 			$prepared[ $index ] = array(
-				'extracted'    => $extracted,
-				'raw_url'      => $raw_url,
-				'normalized'   => $normalized,
-				'is_internal'  => $is_internal,
-				'hash'         => $url_hash,
+				'extracted'   => $extracted,
+				'raw_url'     => $raw_url,
+				'normalized'  => $normalized,
+				'is_internal' => $is_internal,
+				'hash'        => $url_hash,
 			);
 
 			$hashes[ $url_hash ] = $url_hash;
@@ -313,15 +313,15 @@ class BatchProcessor {
 				continue;
 			}
 
-			$extracted  = $item['extracted'];
-			$link_key   = $url->id . ':' . $post->ID . ':' . $post->post_type . ':' . $extracted->field;
+			$extracted = $item['extracted'];
+			$link_key  = $url->id . ':' . $post->ID . ':' . $post->post_type . ':' . $extracted->field;
 
 			if ( isset( $existing_links[ $link_key ] ) ) {
 				// Update existing link.
-				$existing                = $existing_links[ $link_key ];
-				$existing->anchor_text   = $extracted->text;
-				$existing->link_context  = $extracted->context;
-				$existing->updated_at    = current_time( 'mysql' );
+				$existing               = $existing_links[ $link_key ];
+				$existing->anchor_text  = $extracted->text;
+				$existing->link_context = $extracted->context;
+				$existing->updated_at   = current_time( 'mysql' );
 				$this->link_repository->update( $existing );
 				continue;
 			}
@@ -541,15 +541,15 @@ class BatchProcessor {
 		$result = $this->url_checker->check( $url->url );
 
 		// Update the URL model with the results.
-		$url->status        = $result->status;
-		$url->http_code     = $result->http_code;
-		$url->final_url     = $result->final_url;
+		$url->status         = $result->status;
+		$url->http_code      = $result->http_code;
+		$url->final_url      = $result->final_url;
 		$url->redirect_count = $result->redirect_count;
 		$url->error_type     = $result->error_type;
 		$url->error_message  = $result->error_message;
 		$url->response_time  = $result->response_time;
 		$url->last_checked   = current_time( 'mysql' );
-		$url->check_count   = ( $url->check_count ?? 0 ) + 1;
+		$url->check_count    = ( $url->check_count ?? 0 ) + 1;
 
 		$this->url_repository->update( $url );
 
@@ -768,5 +768,4 @@ class BatchProcessor {
 
 		return true;
 	}
-
 }

@@ -2,7 +2,7 @@
 
 A performant, extensible broken link checker for WordPress. Scans content for links, checks their validity, and reports issues.
 
-**Version:** 1.1.0 | **Requirements:** WordPress 6.0+ | PHP 8.0+
+**Version:** 1.1.1 | **Requirements:** WordPress 6.0+ | PHP 8.0+
 
 ## Description
 
@@ -150,6 +150,26 @@ add_action( 'yoko_lc_scan_completed', fn($scan) => wp_mail(...) );
 ```
 
 ## Changelog
+
+### 1.1.1
+Resolves 17 findings from Round 4 code review.
+
+**Critical (P1):**
+- Fixed polling race condition causing permanent scan status stalls
+
+**Important (P2):**
+- Fixed `check_timeout` default mismatch (8 → 30)
+- Fixed `register_menu` capability check timing
+- Moved export handler to page-specific hook
+- Fixed cron reschedule timing
+- Added media extension guard for attachments
+- Optimized N+1 queries with batch lookups
+- Validated `strtotime()` return values
+
+**Code Quality (P3):**
+- Removed dead modal code and 8 unused repository methods (~166 LOC)
+- Removed `next_check` column, bumped schema to 1.2.0
+- Added defensive guards and Yoda conditions
 
 ### 1.1.0
 Addresses all findings from comprehensive multi-agent code review.

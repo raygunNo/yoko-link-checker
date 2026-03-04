@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2026-03-04
+
+Resolves 17 code review findings from Round 4 codebase review (Wave 4).
+
+### Fixed
+- **P1**: Polling race condition — `scheduleNextPoll` now fires in AJAX complete callback, preventing permanent scan status stalls
+- **P2**: `check_timeout` default corrected from 8 to 30, matching Activator/AdminController
+- **P2**: `register_menu` capability uses fixed custom strings instead of `current_user_can()` at registration time
+- **P2**: Export handler moved from `admin_init` to `load-{$hook_suffix}` for page-specific execution
+- **P2**: Cron reschedule uses `time()` instead of `time() + interval`
+- **P2**: `strtotime()` return values validated in DashboardPage/LinksListTable
+- **P2**: Media extension guard added for `attachment_url_to_postid()`
+- **P2**: N+1 queries optimized via batch URL hash lookups (`find_by_hashes()`) and link existence checks (`find_existing_batch()`)
+- **P3**: `ylcAdmin` undefined guard added, Yoda conditions enforced
+- **P3**: Null check on `get_edit_post_link()`, `sanitize_csv_value()` return type fixed
+- **P3**: Duplicate `do_action` calls removed in ResultsPage ignore/unignore
+
+### Changed
+- Inline settings script moved to `admin.js` `bindEvents()`
+- Cron schedules filter registered before activation with explicit 0 args for auto_scan action
+- `url_id` now passed in ignore/unignore hooks
+- Removed redundant `count_posts()` per batch; uses scan record total instead
+
+### Removed
+- Dead modal code (HTML, JS `closeModal`/Escape handlers, CSS rules)
+- 8 dead repository methods (~166 LOC) from LinkRepository and ScanRepository
+- Unused `PROBLEM_STATUSES` constant
+- `next_check` column and index from schema
+
+### Database
+- Schema bumped to 1.2.0
+
 ## [1.1.0] - 2026-03-03
 
 Addresses all findings from comprehensive multi-agent code review (5 P1 Critical, 16 P2 Important, 13 P3 Nice-to-Have).
