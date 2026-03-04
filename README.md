@@ -93,6 +93,11 @@ composer run phpcs
 
 ## Changelog
 
+### 1.0.1
+- Fixed AJAX action name mismatch preventing scanner from starting
+- Fixed incorrect namespace reference causing status check errors
+- Added `YOKO_LC_DEBUG` constant to control logging (disabled by default)
+
 ### 1.0.0
 - Initial release
 - Content scanning for posts, pages, and custom post types

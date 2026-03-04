@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-03-03
+
+### Fixed
+- Fixed AJAX action name mismatch preventing scanner from starting (`ylc_` → `yoko_lc_` prefix)
+- Fixed incorrect namespace reference (`Jeremie\YokoLinkChecker` → `YokoLinkChecker`)
+
+### Changed
+- Added `YOKO_LC_DEBUG` constant to control plugin logging (disabled by default)
+- All debug logging now requires explicit opt-in via `wp-config.php`
+
 ## [1.0.0] - 2026-03-03
 
 ### Added
@@ -24,5 +34,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PHP 8.0+ support
 - WordPress 6.0+ support
 
-[Unreleased]: https://github.com/Yoko-Co/yoko-link-checker/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/Yoko-Co/yoko-link-checker/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/Yoko-Co/yoko-link-checker/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/Yoko-Co/yoko-link-checker/releases/tag/v1.0.0
