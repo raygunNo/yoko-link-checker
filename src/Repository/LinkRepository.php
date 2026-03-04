@@ -103,31 +103,55 @@ final class LinkRepository {
 	}
 
 	/**
-	 * Find or create link.
+	 * Find existing links for multiple tuples in a single query.
 	 *
-	 * @since 1.0.0
-	 * @param Link $link Link entity to find or create.
-	 * @return Link|null The existing or newly created link, or null on failure.
+	 * Returns existing links keyed by a composite key of
+	 * "url_id:source_id:source_type:source_field".
+	 *
+	 * @since 1.0.11
+	 * @param array<array{url_id: int, source_id: int, source_type: string, source_field: string}> $criteria Array of lookup tuples.
+	 * @return array<string, Link> Links keyed by composite key.
 	 */
-	public function find_or_create( Link $link ): ?Link {
-		$existing = $this->find_existing(
-			$link->url_id,
-			$link->source_id,
-			$link->source_type,
-			$link->source_field
-		);
-
-		if ( $existing ) {
-			// Update existing link with new data.
-			$existing->anchor_text   = $link->anchor_text;
-			$existing->link_context  = $link->link_context;
-			$existing->link_position = $link->link_position;
-			$existing->updated_at    = current_time( 'mysql' );
-			$this->update( $existing );
-			return $existing;
+	public function find_existing_batch( array $criteria ): array {
+		if ( empty( $criteria ) ) {
+			return array();
 		}
 
-		return $this->insert( $link );
+		global $wpdb;
+
+		// Build OR conditions for each tuple.
+		$conditions = array();
+		$params     = array();
+		foreach ( $criteria as $tuple ) {
+			$conditions[] = '(url_id = %d AND source_id = %d AND source_type = %s AND source_field = %s)';
+			$params[]     = $tuple['url_id'];
+			$params[]     = $tuple['source_id'];
+			$params[]     = $tuple['source_type'];
+			$params[]     = $tuple['source_field'];
+		}
+
+		$where = implode( ' OR ', $conditions );
+
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name is safe.
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- $where uses placeholders built above.
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT * FROM {$this->table} WHERE {$where}",
+				...$params
+			)
+		);
+		// phpcs:enable
+
+		$result = array();
+		foreach ( $rows as $row ) {
+			$link = Link::from_row( $row );
+			$key  = $link->url_id . ':' . $link->source_id . ':' . $link->source_type . ':' . $link->source_field;
+
+			$result[ $key ] = $link;
+		}
+
+		return $result;
 	}
 
 	/**
@@ -192,207 +216,6 @@ final class LinkRepository {
 		);
 
 		return false !== $result;
-	}
-
-	/**
-	 * Delete all links for a source.
-	 *
-	 * @since 1.0.0
-	 * @param int    $source_id   Source post ID.
-	 * @param string $source_type Source post type.
-	 * @return int Number of links deleted.
-	 */
-	public function delete_by_source( int $source_id, string $source_type ): int {
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$result = $wpdb->delete(
-			$this->table,
-			array(
-				'source_id'   => $source_id,
-				'source_type' => $source_type,
-			),
-			array( '%d', '%s' )
-		);
-
-		return false !== $result ? (int) $result : 0;
-	}
-
-	/**
-	 * Get links for a URL with joined URL data.
-	 *
-	 * @since 1.0.0
-	 * @param int $url_id URL ID.
-	 * @return array<Link>
-	 */
-	public function get_by_url( int $url_id ): array {
-		global $wpdb;
-
-		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names are safe.
-		$rows = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT l.*, u.url, u.url_normalized, u.status as url_status, u.http_code, u.final_url, u.error_message as url_error 
-				FROM {$this->table} l 
-				JOIN {$this->urls_table} u ON l.url_id = u.id 
-				WHERE l.url_id = %d 
-				ORDER BY l.source_id ASC",
-				$url_id
-			)
-		);
-		// phpcs:enable
-
-		return array_map(
-			function ( $row ) {
-				$link = Link::from_row( $row );
-				// Attach URL data.
-				$link->url = Url::from_row( $row );
-				return $link;
-			},
-			$rows
-		);
-	}
-
-	/**
-	 * Get links for a source.
-	 *
-	 * @since 1.0.0
-	 * @param int    $source_id   Source post ID.
-	 * @param string $source_type Source post type.
-	 * @return array<Link>
-	 */
-	public function get_by_source( int $source_id, string $source_type ): array {
-		global $wpdb;
-
-		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names are safe.
-		$rows = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT l.*, u.url, u.url_normalized, u.status as url_status, u.http_code, u.final_url, u.error_message as url_error 
-				FROM {$this->table} l 
-				JOIN {$this->urls_table} u ON l.url_id = u.id 
-				WHERE l.source_id = %d AND l.source_type = %s 
-				ORDER BY l.link_position ASC",
-				$source_id,
-				$source_type
-			)
-		);
-		// phpcs:enable
-
-		return array_map(
-			function ( $row ) {
-				$link      = Link::from_row( $row );
-				$link->url = Url::from_row( $row );
-				return $link;
-			},
-			$rows
-		);
-	}
-
-	/**
-	 * Get links with problems (joined with URL status).
-	 *
-	 * @since 1.0.0
-	 * @param array<string>        $statuses Statuses to include.
-	 * @param int                  $limit    Maximum links to return.
-	 * @param int                  $offset   Offset for pagination.
-	 * @param array<string, mixed> $filters Additional filters.
-	 * @return array<Link>
-	 */
-	public function get_with_status( array $statuses, int $limit = 50, int $offset = 0, array $filters = array() ): array {
-		global $wpdb;
-
-		// Build status placeholders.
-		$status_placeholders = implode( ', ', array_fill( 0, count( $statuses ), '%s' ) );
-
-		// Build base query.
-		$sql = "SELECT l.*, u.id as url_id, u.url, u.url_normalized, u.status as url_status, 
-				u.http_code, u.final_url, u.error_type, u.error_message as url_error, 
-				u.is_internal, u.last_checked, u.is_ignored 
-				FROM {$this->table} l 
-				JOIN {$this->urls_table} u ON l.url_id = u.id 
-				WHERE u.status IN ({$status_placeholders})"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-
-		$params = $statuses;
-
-		// Apply filters.
-		if ( ! empty( $filters['is_internal'] ) ) {
-			$sql     .= ' AND u.is_internal = %d';
-			$params[] = 1;
-		} elseif ( isset( $filters['is_internal'] ) && false === $filters['is_internal'] ) {
-			$sql     .= ' AND u.is_internal = %d';
-			$params[] = 0;
-		}
-
-		if ( ! empty( $filters['source_type'] ) ) {
-			$sql     .= ' AND l.source_type = %s';
-			$params[] = $filters['source_type'];
-		}
-
-		if ( ! empty( $filters['is_ignored'] ) ) {
-			$sql     .= ' AND u.is_ignored = %d';
-			$params[] = 1;
-		} elseif ( empty( $filters['include_ignored'] ) ) {
-			$sql     .= ' AND u.is_ignored = %d';
-			$params[] = 0;
-		}
-
-		$sql     .= ' ORDER BY u.last_checked DESC, l.id DESC LIMIT %d OFFSET %d';
-		$params[] = $limit;
-		$params[] = $offset;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared
-		$rows = $wpdb->get_results( $wpdb->prepare( $sql, $params ) );
-
-		return array_map(
-			function ( $row ) {
-				$link      = Link::from_row( $row );
-				$link->url = Url::from_row( $row );
-				return $link;
-			},
-			$rows
-		);
-	}
-
-	/**
-	 * Count links with status.
-	 *
-	 * @since 1.0.0
-	 * @param array<string>        $statuses Statuses to count.
-	 * @param array<string, mixed> $filters Additional filters.
-	 * @return int
-	 */
-	public function count_with_status( array $statuses, array $filters = array() ): int {
-		global $wpdb;
-
-		$status_placeholders = implode( ', ', array_fill( 0, count( $statuses ), '%s' ) );
-
-		$sql = "SELECT COUNT(*) FROM {$this->table} l 
-				JOIN {$this->urls_table} u ON l.url_id = u.id 
-				WHERE u.status IN ({$status_placeholders})"; // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-
-		$params = $statuses;
-
-		if ( ! empty( $filters['is_internal'] ) ) {
-			$sql     .= ' AND u.is_internal = %d';
-			$params[] = 1;
-		} elseif ( isset( $filters['is_internal'] ) && false === $filters['is_internal'] ) {
-			$sql     .= ' AND u.is_internal = %d';
-			$params[] = 0;
-		}
-
-		if ( ! empty( $filters['source_type'] ) ) {
-			$sql     .= ' AND l.source_type = %s';
-			$params[] = $filters['source_type'];
-		}
-
-		if ( empty( $filters['include_ignored'] ) ) {
-			$sql     .= ' AND u.is_ignored = %d';
-			$params[] = 0;
-		}
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.NotPrepared
-		return (int) $wpdb->get_var( $wpdb->prepare( $sql, $params ) );
 	}
 
 	/**

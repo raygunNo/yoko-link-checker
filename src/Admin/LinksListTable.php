@@ -366,11 +366,15 @@ class LinksListTable extends WP_List_Table {
 		$edit_link = get_edit_post_link( $post_id );
 		$view_link = get_permalink( $post_id );
 
-		$output = sprintf(
-			'<a href="%s">%s</a>',
-			esc_url( $edit_link ),
-			esc_html( $this->truncate_text( $post->post_title, 40 ) )
-		);
+		if ( null === $edit_link ) {
+			$output = esc_html( $this->truncate_text( $post->post_title, 40 ) );
+		} else {
+			$output = sprintf(
+				'<a href="%s">%s</a>',
+				esc_url( $edit_link ),
+				esc_html( $this->truncate_text( $post->post_title, 40 ) )
+			);
+		}
 
 		$output .= ' <a href="' . esc_url( $view_link ) . '" target="_blank" class="ylc-view-post" title="' . esc_attr__( 'View', 'yoko-link-checker' ) . '">↗</a>';
 
@@ -405,6 +409,10 @@ class LinksListTable extends WP_List_Table {
 		}
 
 		$timestamp = strtotime( $item->last_checked );
+
+		if ( false === $timestamp ) {
+			return __( 'Unknown', 'yoko-link-checker' );
+		}
 
 		return sprintf(
 			'<span title="%s">%s</span>',

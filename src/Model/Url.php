@@ -51,19 +51,6 @@ final class Url {
 	);
 
 	/**
-	 * Problem statuses (not valid).
-	 *
-	 * @var array<string>
-	 */
-	public const PROBLEM_STATUSES = array(
-		self::STATUS_BROKEN,
-		self::STATUS_WARNING,
-		self::STATUS_BLOCKED,
-		self::STATUS_TIMEOUT,
-		self::STATUS_ERROR,
-	);
-
-	/**
 	 * URL ID.
 	 *
 	 * @var int|null
@@ -169,13 +156,6 @@ final class Url {
 	public ?string $last_checked = null;
 
 	/**
-	 * When URL should next be checked.
-	 *
-	 * @var string|null
-	 */
-	public ?string $next_check = null;
-
-	/**
 	 * Whether URL is ignored.
 	 *
 	 * @var bool
@@ -224,7 +204,6 @@ final class Url {
 		$url->check_count   = (int) ( $row->check_count ?? 0 );
 		$url->first_seen    = $row->first_seen ?? '';
 		$url->last_checked  = $row->last_checked ?? null;
-		$url->next_check    = $row->next_check ?? null;
 		$url->is_ignored    = (bool) ( $row->is_ignored ?? false );
 		$url->ignore_reason = $row->ignore_reason ?? null;
 
@@ -253,7 +232,6 @@ final class Url {
 			'check_count'    => $this->check_count,
 			'first_seen'     => $this->first_seen,
 			'last_checked'   => $this->last_checked,
-			'next_check'     => $this->next_check,
 			'is_ignored'     => $this->is_ignored ? 1 : 0,
 			'ignore_reason'  => $this->ignore_reason,
 		);

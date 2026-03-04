@@ -87,10 +87,9 @@ class ResultsPage {
 	 * @return void
 	 */
 	private function handle_actions(): void {
-		// Handle export action first (doesn't require link_id).
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Nonce verified below.
+		// Export is handled early via the load-{$hook} action in AdminController.
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Just checking the action parameter.
 		if ( isset( $_GET['action'] ) && 'export' === $_GET['action'] ) {
-			$this->handle_export();
 			return;
 		}
 
@@ -191,14 +190,6 @@ class ResultsPage {
 			wp_safe_redirect( add_query_arg( 'ylc_error', 'ignore_failed', $redirect_url ) );
 			exit;
 		}
-
-		/**
-		 * Fires when a link is ignored.
-		 *
-		 * @since 1.0.0
-		 * @param int $link_id Link ID.
-		 */
-		do_action( 'yoko_lc_link_ignored', $link_id );
 	}
 
 	/**
@@ -222,14 +213,6 @@ class ResultsPage {
 			wp_safe_redirect( add_query_arg( 'ylc_error', 'unignore_failed', $redirect_url ) );
 			exit;
 		}
-
-		/**
-		 * Fires when a link is unignored.
-		 *
-		 * @since 1.0.0
-		 * @param int $link_id Link ID.
-		 */
-		do_action( 'yoko_lc_link_unignored', $link_id );
 	}
 
 	/**
@@ -329,8 +312,9 @@ class ResultsPage {
 	 * @param string $value The value to sanitize.
 	 * @return string The sanitized value.
 	 */
-	private function sanitize_csv_value( $value ) {
-		if ( is_string( $value ) && isset( $value[0] ) && in_array( $value[0], array( '=', '+', '-', '@', "\t", "\r" ), true ) ) {
+	private function sanitize_csv_value( $value ): string {
+		$value = (string) $value;
+		if ( isset( $value[0] ) && in_array( $value[0], array( '=', '+', '-', '@', "\t", "\r" ), true ) ) {
 			return "'" . $value;
 		}
 		return $value;

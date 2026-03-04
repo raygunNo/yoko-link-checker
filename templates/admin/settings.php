@@ -140,12 +140,3 @@ $yoko_lc_post_types = get_post_types( array( 'public' => true ), 'objects' );
 		</table>
 	</div>
 </div>
-
-<script>
-jQuery(document).ready(function($) {
-	// Toggle auto-scan options.
-	$('#yoko_lc_auto_scan_enabled').on('change', function() {
-		$('.ylc-auto-scan-option').toggle(this.checked);
-	});
-});
-</script>

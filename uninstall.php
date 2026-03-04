@@ -42,7 +42,6 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	 * Remove options.
 	 */
 	$options = array(
-		'yoko_lc_settings',
 		'yoko_lc_schema_version',
 		'yoko_lc_activated_at',
 		'yoko_lc_remove_data_on_uninstall',

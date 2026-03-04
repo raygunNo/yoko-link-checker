@@ -168,7 +168,12 @@ $yoko_lc_is_scanning = $scan_status && 'running' === $scan_status['status'];
 					<td>
 						<?php
 						if ( $yoko_lc_link['last_checked'] ) {
-							echo esc_html( human_time_diff( strtotime( $yoko_lc_link['last_checked'] ) ) . ' ' . __( 'ago', 'yoko-link-checker' ) );
+							$yoko_lc_timestamp = strtotime( $yoko_lc_link['last_checked'] );
+							if ( false === $yoko_lc_timestamp ) {
+								esc_html_e( 'Unknown', 'yoko-link-checker' );
+							} else {
+								echo esc_html( human_time_diff( $yoko_lc_timestamp ) . ' ' . __( 'ago', 'yoko-link-checker' ) );
+							}
 						} else {
 							esc_html_e( 'Never', 'yoko-link-checker' );
 						}

@@ -74,24 +74,9 @@ class AdminController {
 	public function register(): void {
 		add_action( 'admin_menu', array( $this, 'register_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
-		add_action( 'admin_init', array( $this, 'handle_early_actions' ) );
 
 		// Register AJAX handlers.
 		$this->ajax_handler->register();
-	}
-
-	/**
-	 * Handle actions that need to run before any output.
-	 *
-	 * @since 1.0.4
-	 * @return void
-	 */
-	public function handle_early_actions(): void {
-		// Handle CSV export early, before any output.
-		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Nonce verified in the method.
-		if ( isset( $_GET['page'] ) && 'yoko-link-checker-results' === $_GET['page'] && isset( $_GET['action'] ) && 'export' === $_GET['action'] ) {
-			$this->results_page->handle_export();
-		}
 	}
 
 	/**
@@ -101,9 +86,8 @@ class AdminController {
 	 * @return void
 	 */
 	public function register_menu(): void {
-		// Use manage_options as fallback if custom caps don't exist.
-		$view_cap     = current_user_can( 'yoko_lc_view_results' ) ? 'yoko_lc_view_results' : 'manage_options';
-		$settings_cap = current_user_can( 'yoko_lc_manage_settings' ) ? 'yoko_lc_manage_settings' : 'manage_options';
+		$view_cap     = 'yoko_lc_view_results';
+		$settings_cap = 'yoko_lc_manage_settings';
 
 		// Main menu page.
 		add_menu_page(
@@ -127,7 +111,7 @@ class AdminController {
 		);
 
 		// Results submenu.
-		add_submenu_page(
+		$results_hook = add_submenu_page(
 			self::MENU_SLUG,
 			__( 'Reports', 'yoko-link-checker' ),
 			__( 'Reports', 'yoko-link-checker' ),
@@ -135,6 +119,11 @@ class AdminController {
 			self::MENU_SLUG . '-results',
 			array( $this->results_page, 'render' )
 		);
+
+		// Handle CSV export early on results page load, before any output.
+		if ( $results_hook ) {
+			add_action( "load-{$results_hook}", array( $this, 'maybe_handle_export' ) );
+		}
 
 		// Settings submenu.
 		add_submenu_page(
@@ -145,6 +134,21 @@ class AdminController {
 			self::MENU_SLUG . '-settings',
 			array( $this, 'render_settings' )
 		);
+	}
+
+	/**
+	 * Handle CSV export on the results page load hook.
+	 *
+	 * Fires only when the results page is loaded, not on every admin page.
+	 *
+	 * @since 1.0.11
+	 * @return void
+	 */
+	public function maybe_handle_export(): void {
+		// phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Nonce verified in handle_export().
+		if ( isset( $_GET['action'] ) && 'export' === $_GET['action'] ) {
+			$this->results_page->handle_export();
+		}
 	}
 
 	/**
@@ -190,7 +194,7 @@ class AdminController {
 	 */
 	private function is_plugin_page( string $hook_suffix ): bool {
 		// Check if the hook contains our menu slug.
-		return strpos( $hook_suffix, self::MENU_SLUG ) !== false;
+		return false !== strpos( $hook_suffix, self::MENU_SLUG );
 	}
 
 	/**

@@ -51,15 +51,3 @@ $yoko_lc_current_url = admin_url( 'admin.php?page=yoko-link-checker-results' );
 		?>
 	</form>
 </div>
-
-<!-- Recheck Modal -->
-<div id="ylc-recheck-modal" class="ylc-modal" style="display: none;">
-	<div class="ylc-modal-content">
-		<span class="ylc-modal-close">&times;</span>
-		<h3><?php esc_html_e( 'Rechecking URL...', 'yoko-link-checker' ); ?></h3>
-		<div class="ylc-modal-body">
-			<span class="spinner is-active"></span>
-			<p id="ylc-recheck-url"></p>
-		</div>
-	</div>
-</div>

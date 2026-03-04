@@ -56,7 +56,7 @@ spl_autoload_register(
 
 		// Check if the class uses the namespace prefix.
 		$len = strlen( $prefix );
-		if ( strncmp( $prefix, $class, $len ) !== 0 ) {
+		if ( 0 !== strncmp( $prefix, $class, $len ) ) {
 			return;
 		}
 

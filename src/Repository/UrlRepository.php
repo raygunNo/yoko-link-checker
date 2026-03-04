@@ -95,6 +95,55 @@ final class UrlRepository {
 	}
 
 	/**
+	 * Find multiple URLs by their normalized URL hashes in a single query.
+	 *
+	 * @since 1.0.11
+	 * @param array<string> $hashes Array of SHA-256 hashes.
+	 * @return array<string, Url> URL objects keyed by url_hash.
+	 */
+	public function find_by_hashes( array $hashes ): array {
+		if ( empty( $hashes ) ) {
+			return array();
+		}
+
+		global $wpdb;
+
+		$placeholders = implode( ', ', array_fill( 0, count( $hashes ), '%s' ) );
+
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name is safe.
+		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- Placeholders are generated safely above.
+		$rows = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT * FROM {$this->table} WHERE url_hash IN ({$placeholders})",
+				...$hashes
+			)
+		);
+		// phpcs:enable
+
+		$result = array();
+		foreach ( $rows as $row ) {
+			$url                    = Url::from_row( $row );
+			$result[ $url->url_hash ] = $url;
+		}
+
+		return $result;
+	}
+
+	/**
+	 * Get the URL normalizer instance.
+	 *
+	 * Provides access for batch operations that need to normalize and hash
+	 * URLs before performing bulk lookups.
+	 *
+	 * @since 1.0.11
+	 * @return UrlNormalizer
+	 */
+	public function get_normalizer(): UrlNormalizer {
+		return $this->normalizer;
+	}
+
+	/**
 	 * Find or create URL from raw URL string.
 	 *
 	 * Handles normalization and internal detection automatically.

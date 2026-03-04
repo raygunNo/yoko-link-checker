@@ -132,9 +132,12 @@ class BatchProcessor {
 			)
 		);
 
-		$posts       = $this->content_discovery->get_batch( $after_id, $batch_size );
-		$total_posts = $this->content_discovery->count_posts();
-		$last_id     = $after_id;
+		$posts   = $this->content_discovery->get_batch( $after_id, $batch_size );
+		$last_id = $after_id;
+
+		// Use the total from the scan record instead of re-counting on every batch.
+		$scan        = $this->scan_repository->find( $scan_id );
+		$total_posts = $scan ? $scan->total_posts : 0;
 
 		Logger::debug(
 			'process_discovery_batch - got posts',
@@ -160,8 +163,10 @@ class BatchProcessor {
 			)
 		);
 
-		// Update scan state.
-		$scan = $this->scan_repository->find( $scan_id );
+		// Update scan state (re-fetch scan if not already loaded to get current processed_posts).
+		if ( ! $scan ) {
+			$scan = $this->scan_repository->find( $scan_id );
+		}
 		if ( $scan ) {
 			$new_processed = $scan->processed_posts + $processed_count;
 			Logger::debug( 'process_discovery_batch - updating progress', array( 'new_processed' => $new_processed ) );
@@ -187,10 +192,15 @@ class BatchProcessor {
 	/**
 	 * Process a single post for link extraction.
 	 *
+	 * Uses batch queries to avoid N+1 database lookups: all extracted URLs
+	 * are normalised and hashed up-front, then fetched in bulk from the
+	 * urls table. Existing links are likewise checked in a single query.
+	 *
 	 * @since 1.0.0
+	 * @since 1.0.11 Optimised with batch URL and link lookups.
 	 * @param int     $scan_id Scan ID.
 	 * @param WP_Post $post    Post object.
-	 * @return int Number of links extracted.
+	 * @return int Number of new links inserted.
 	 */
 	private function process_post( int $scan_id, WP_Post $post ): int {
 		/**
@@ -205,29 +215,113 @@ class BatchProcessor {
 		}
 
 		$extracted_links = $this->extractor_registry->extract_from_post( $post );
-		$link_count      = 0;
 
-		foreach ( $extracted_links as $extracted ) {
-			// Find or create the URL record.
-			$url = $this->url_repository->find_or_create_from_raw( $extracted->url );
+		if ( empty( $extracted_links ) ) {
+			/** This action is documented below. */
+			do_action( 'yoko_lc_post_processed', $post, 0, $scan_id );
+			return 0;
+		}
+
+		$normalizer = $this->url_repository->get_normalizer();
+
+		// --- Phase 1: normalise every extracted URL and compute hashes. ---
+		$prepared = array(); // Index-keyed array of { extracted, normalized, is_internal, hash }.
+		$hashes   = array();
+
+		foreach ( $extracted_links as $index => $extracted ) {
+			$raw_url    = trim( $extracted->url );
+			$normalized = $normalizer->normalize( $raw_url );
+
+			if ( empty( $normalized ) ) {
+				continue;
+			}
+
+			$is_internal = $normalizer->is_internal( $normalized );
+			$url_hash    = $normalizer->hash( $normalized );
+
+			$prepared[ $index ] = array(
+				'extracted'    => $extracted,
+				'raw_url'      => $raw_url,
+				'normalized'   => $normalized,
+				'is_internal'  => $is_internal,
+				'hash'         => $url_hash,
+			);
+
+			$hashes[ $url_hash ] = $url_hash;
+		}
+
+		if ( empty( $prepared ) ) {
+			/** This action is documented below. */
+			do_action( 'yoko_lc_post_processed', $post, 0, $scan_id );
+			return 0;
+		}
+
+		// --- Phase 2: batch-fetch existing URL records by hash. ---
+		$existing_urls = $this->url_repository->find_by_hashes( array_values( $hashes ) );
+
+		// Create any URLs that don't exist yet, and build a hash-to-Url map.
+		$url_map = $existing_urls; // keyed by url_hash.
+
+		foreach ( $prepared as &$item ) {
+			$hash = $item['hash'];
+
+			if ( isset( $url_map[ $hash ] ) ) {
+				$item['url'] = $url_map[ $hash ];
+				continue;
+			}
+
+			// URL not in DB yet -- create it via the repository (handles race conditions).
+			$url = $this->url_repository->find_or_create(
+				$item['raw_url'],
+				$item['normalized'],
+				$item['is_internal']
+			);
+
+			if ( $url && $url->id ) {
+				$url_map[ $hash ] = $url;
+				$item['url']      = $url;
+			} else {
+				$item['url'] = null;
+			}
+		}
+		unset( $item );
+
+		// --- Phase 3: batch-fetch existing links for this source post. ---
+		$link_criteria = array();
+		foreach ( $prepared as $item ) {
+			if ( ! $item['url'] || ! $item['url']->id ) {
+				continue;
+			}
+
+			$link_criteria[] = array(
+				'url_id'       => $item['url']->id,
+				'source_id'    => $post->ID,
+				'source_type'  => $post->post_type,
+				'source_field' => $item['extracted']->field,
+			);
+		}
+
+		$existing_links = $this->link_repository->find_existing_batch( $link_criteria );
+
+		// --- Phase 4: insert or update links. ---
+		$link_count = 0;
+
+		foreach ( $prepared as $item ) {
+			$url = $item['url'];
 
 			if ( ! $url || ! $url->id ) {
 				continue;
 			}
 
-			// Check if link already exists for this source.
-			$existing = $this->link_repository->find_existing(
-				$url->id,
-				$post->ID,
-				$post->post_type,
-				$extracted->field
-			);
+			$extracted  = $item['extracted'];
+			$link_key   = $url->id . ':' . $post->ID . ':' . $post->post_type . ':' . $extracted->field;
 
-			if ( $existing ) {
+			if ( isset( $existing_links[ $link_key ] ) ) {
 				// Update existing link.
-				$existing->anchor_text  = $extracted->text;
-				$existing->link_context = $extracted->context;
-				$existing->updated_at   = current_time( 'mysql' );
+				$existing                = $existing_links[ $link_key ];
+				$existing->anchor_text   = $extracted->text;
+				$existing->link_context  = $extracted->context;
+				$existing->updated_at    = current_time( 'mysql' );
 				$this->link_repository->update( $existing );
 				continue;
 			}
@@ -558,13 +652,17 @@ class BatchProcessor {
 			}
 		}
 
-		// Check attachments by URL.
-		$attachment_id = attachment_url_to_postid( $url->url );
-		if ( $attachment_id > 0 ) {
-			$url->status    = Url::STATUS_VALID;
-			$url->http_code = 200;
-			$this->url_repository->update( $url );
-			return;
+		// Check attachments by URL — only for paths that look like media files.
+		// attachment_url_to_postid() performs an expensive LIKE query, so guard it.
+		$media_path = wp_parse_url( $url->url, PHP_URL_PATH );
+		if ( $media_path && preg_match( '/\.(jpe?g|png|gif|webp|svg|pdf|mp[34]|mov|avi|docx?|xlsx?|pptx?|zip)$/i', $media_path ) ) {
+			$attachment_id = attachment_url_to_postid( $url->url );
+			if ( $attachment_id > 0 ) {
+				$url->status    = Url::STATUS_VALID;
+				$url->http_code = 200;
+				$this->url_repository->update( $url );
+				return;
+			}
 		}
 
 		// WordPress functions couldn't verify the URL.

@@ -70,6 +70,10 @@ final class Plugin {
 			return;
 		}
 
+		// Register custom cron schedules on every request so WP-Cron recognizes them.
+		// phpcs:ignore WordPress.WP.CronInterval.CronSchedulesInterval -- 60-second interval is intentional for responsive batch processing.
+		add_filter( 'cron_schedules', array( $this, 'add_cron_schedules' ) );
+
 		// Check if database needs setup (in case activation hook didn't run).
 		$this->maybe_run_activation();
 
@@ -77,10 +81,6 @@ final class Plugin {
 		if ( is_admin() ) {
 			$this->admin_controller()->register();
 		}
-
-		// Register custom cron schedules on every request so WP-Cron recognizes them.
-		// phpcs:ignore WordPress.WP.CronInterval.CronSchedulesInterval -- 60-second interval is intentional for responsive batch processing.
-		add_filter( 'cron_schedules', array( $this, 'add_cron_schedules' ) );
 
 		// Register cron hooks (available in all contexts for WP-Cron).
 		$this->register_cron_hooks();
@@ -123,7 +123,7 @@ final class Plugin {
 	 */
 	private function register_cron_hooks(): void {
 		add_action( 'yoko_lc_process_scan_batch', array( $this, 'handle_cron_batch' ), 10, 1 );
-		add_action( 'yoko_lc_auto_scan', array( $this, 'handle_auto_scan' ) );
+		add_action( 'yoko_lc_auto_scan', array( $this, 'handle_auto_scan' ), 10, 0 );
 	}
 
 	/**
@@ -262,7 +262,7 @@ final class Plugin {
 	public function http_client(): HttpClient {
 		return $this->get_service(
 			HttpClient::class,
-			fn() => new HttpClient( (int) get_option( 'yoko_lc_check_timeout', 8 ) )
+			fn() => new HttpClient( (int) get_option( 'yoko_lc_check_timeout', 30 ) )
 		);
 	}
 

@@ -549,7 +549,7 @@ class ScanOrchestrator {
 		wp_clear_scheduled_hook( $hook );
 
 		// Schedule next.
-		wp_schedule_event( time() + $this->get_frequency_seconds( $frequency ), $frequency, $hook );
+		wp_schedule_event( time(), $frequency, $hook );
 	}
 
 	/**

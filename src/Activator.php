@@ -29,7 +29,7 @@ final class Activator {
 	 *
 	 * @var string
 	 */
-	public const SCHEMA_VERSION = '1.1.0';
+	public const SCHEMA_VERSION = '1.2.0';
 
 	/**
 	 * Option key for tracking installed schema version.
@@ -89,14 +89,12 @@ final class Activator {
 			check_count INT UNSIGNED NOT NULL DEFAULT 0,
 			first_seen DATETIME NOT NULL,
 			last_checked DATETIME DEFAULT NULL,
-			next_check DATETIME DEFAULT NULL,
 			is_ignored TINYINT(1) NOT NULL DEFAULT 0,
 			ignore_reason VARCHAR(255) DEFAULT NULL,
 			PRIMARY KEY  (id),
 			UNIQUE KEY url_hash (url_hash),
 			KEY status (status),
 			KEY is_internal (is_internal),
-			KEY next_check (next_check),
 			KEY is_ignored (is_ignored),
 			KEY status_ignored (status, is_ignored),
 			KEY status_ignored_id (status, is_ignored, id)

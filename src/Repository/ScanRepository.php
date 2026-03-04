@@ -64,23 +64,6 @@ final class ScanRepository {
 	}
 
 	/**
-	 * Get the most recent scan.
-	 *
-	 * @since 1.0.0
-	 * @return Scan|null
-	 */
-	public function get_latest(): ?Scan {
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$row = $wpdb->get_row(
-			"SELECT * FROM {$this->table} ORDER BY id DESC LIMIT 1" // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		);
-
-		return $row ? Scan::from_row( $row ) : null;
-	}
-
-	/**
 	 * Get any currently running scan.
 	 *
 	 * @since 1.0.0
@@ -150,27 +133,6 @@ final class ScanRepository {
 		}
 		$scan->current_phase = $phase;
 		return $this->update( $scan );
-	}
-
-	/**
-	 * Get recent scans.
-	 *
-	 * @since 1.0.0
-	 * @param int $limit Maximum scans to return.
-	 * @return array<Scan>
-	 */
-	public function get_recent( int $limit = 10 ): array {
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$rows = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT * FROM {$this->table} ORDER BY id DESC LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$limit
-			)
-		);
-
-		return array_map( fn( $row ) => Scan::from_row( $row ), $rows );
 	}
 
 	/**

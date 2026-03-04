@@ -193,6 +193,10 @@ class DashboardPage {
 
 		$timestamp = strtotime( $scan->completed_at );
 
+		if ( false === $timestamp ) {
+			return __( 'Unknown', 'yoko-link-checker' );
+		}
+
 		return sprintf(
 			/* translators: %s: human-readable time difference */
 			__( '%s ago', 'yoko-link-checker' ),
@@ -214,7 +218,12 @@ class DashboardPage {
 
 		$start = strtotime( $scan->started_at );
 		$end   = strtotime( $scan->completed_at );
-		$diff  = $end - $start;
+
+		if ( false === $start || false === $end ) {
+			return "\xE2\x80\x94"; // em-dash.
+		}
+
+		$diff = $end - $start;
 
 		if ( $diff < 60 ) {
 			/* translators: %d: number of seconds */

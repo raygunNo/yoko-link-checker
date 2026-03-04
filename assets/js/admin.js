@@ -10,15 +10,14 @@
 (function($) {
 	'use strict';
 
+	if (typeof ylcAdmin === 'undefined') {
+		return;
+	}
+
 	/**
 	 * Current polling timeout ID.
 	 */
 	let pollIntervalId = null;
-
-	/**
-	 * Whether a poll request is currently in flight.
-	 */
-	let isPolling = false;
 
 	/**
 	 * Number of polling requests made since polling started.
@@ -46,11 +45,9 @@
 		// Data management
 		$(document).on('click', '.ylc-clear-data', handleClearData);
 
-		// Modal close on Escape key
-		$(document).on('keydown', function(e) {
-			if (e.key === 'Escape' || e.keyCode === 27) {
-				closeModal();
-			}
+		// Settings: toggle auto-scan options visibility.
+		$('#yoko_lc_auto_scan_enabled').on('change', function() {
+			$('.ylc-auto-scan-option').toggle(this.checked);
 		});
 
 		// Clear polling timer on page unload.
@@ -103,9 +100,8 @@
 	function scheduleNextPoll() {
 		pollIntervalId = setTimeout(function() {
 			pollCount++;
-			pollStatus();
 			pollIntervalId = null;
-			scheduleNextPoll();
+			pollStatus(scheduleNextPoll);
 		}, getPollInterval());
 	}
 
@@ -117,19 +113,14 @@
 			clearTimeout(pollIntervalId);
 			pollIntervalId = null;
 		}
-		isPolling = false;
 	}
 
 	/**
 	 * Poll for scan status.
+	 *
+	 * @param {Function} onComplete Callback invoked after the request finishes.
 	 */
-	function pollStatus() {
-		if (isPolling) {
-			return;
-		}
-
-		isPolling = true;
-
+	function pollStatus(onComplete) {
 		$.ajax({
 			url: ylcAdmin.ajaxUrl,
 			type: 'POST',
@@ -143,7 +134,9 @@
 				}
 			},
 			complete: function() {
-				isPolling = false;
+				if (typeof onComplete === 'function') {
+					onComplete();
+				}
 			}
 		});
 	}
@@ -336,13 +329,6 @@
 				$button.prop('disabled', false);
 			}
 		});
-	}
-
-	/**
-	 * Close modal.
-	 */
-	function closeModal() {
-		$('.ylc-modal').hide();
 	}
 
 	/**

@@ -328,8 +328,9 @@ class AjaxHandler {
 		 *
 		 * @since 1.0.0
 		 * @param int $link_id Link ID.
+		 * @param int $url_id  URL ID.
 		 */
-		do_action( 'yoko_lc_link_ignored', $link_id );
+		do_action( 'yoko_lc_link_ignored', $link_id, $link->url_id );
 
 		wp_send_json_success( array( 'message' => __( 'Link ignored.', 'yoko-link-checker' ) ) );
 	}
@@ -367,8 +368,9 @@ class AjaxHandler {
 		 *
 		 * @since 1.0.0
 		 * @param int $link_id Link ID.
+		 * @param int $url_id  URL ID.
 		 */
-		do_action( 'yoko_lc_link_unignored', $link_id );
+		do_action( 'yoko_lc_link_unignored', $link_id, $link->url_id );
 
 		wp_send_json_success( array( 'message' => __( 'Link un-ignored.', 'yoko-link-checker' ) ) );
 	}
