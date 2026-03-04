@@ -127,8 +127,8 @@ class AdminController {
 		// Results submenu.
 		add_submenu_page(
 			self::MENU_SLUG,
-			__( 'Broken Links', 'yoko-link-checker' ),
-			__( 'Broken Links', 'yoko-link-checker' ),
+			__( 'Reports', 'yoko-link-checker' ),
+			__( 'Reports', 'yoko-link-checker' ),
 			$view_cap,
 			self::MENU_SLUG . '-results',
 			array( $this->results_page, 'render' )

@@ -82,12 +82,6 @@ class ResultsPage {
 			return;
 		}
 
-		// Handle bulk actions from list table.
-		if ( isset( $_POST['_wpnonce'] ) && isset( $_POST['action'] ) ) {
-			// Bulk actions are handled by the list table.
-			return;
-		}
-
 		// Handle single actions.
 		if ( ! isset( $_GET['action'] ) || ! isset( $_GET['link_id'] ) ) {
 			return;
@@ -241,17 +235,18 @@ class ResultsPage {
 		// Write UTF-8 BOM for Excel compatibility.
 		fprintf( $output, chr( 0xEF ) . chr( 0xBB ) . chr( 0xBF ) );
 
-		// Write header row.
+		// Write header row with clear column names for non-technical users.
 		fputcsv(
 			$output,
 			array(
-				__( 'URL', 'yoko-link-checker' ),
+				__( 'Broken URL', 'yoko-link-checker' ),
 				__( 'Status', 'yoko-link-checker' ),
 				__( 'HTTP Code', 'yoko-link-checker' ),
-				__( 'Found In', 'yoko-link-checker' ),
-				__( 'Post Type', 'yoko-link-checker' ),
+				__( 'Error Details', 'yoko-link-checker' ),
+				__( 'Source URL', 'yoko-link-checker' ),
+				__( 'Source Title', 'yoko-link-checker' ),
+				__( 'Source Type', 'yoko-link-checker' ),
 				__( 'Link Text', 'yoko-link-checker' ),
-				__( 'Error Message', 'yoko-link-checker' ),
 				__( 'Last Checked', 'yoko-link-checker' ),
 			)
 		);
@@ -264,10 +259,11 @@ class ResultsPage {
 					$link->url ?? '',
 					$link->status ?? '',
 					$link->http_code ?? '',
+					$link->error_message ?? '',
+					$link->source_url ?? '',
 					$link->post_title ?? '',
 					$link->post_type ?? '',
 					$link->link_text ?? '',
-					$link->error_message ?? '',
 					$link->last_checked ?? '',
 				)
 			);

@@ -610,13 +610,25 @@ final class LinkRepository {
 				l.source_id,
 				l.source_type,
 				p.post_title,
-				p.post_type
+				p.post_type,
+				p.guid as source_guid
 			FROM {$this->table} l
 			JOIN {$this->urls_table} u ON l.url_id = u.id
 			LEFT JOIN {$wpdb->posts} p ON l.source_id = p.ID AND l.source_type = 'post'
 			ORDER BY u.status ASC, u.url ASC"
 		);
 		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+
+		// Add proper permalinks for each row.
+		if ( $rows ) {
+			foreach ( $rows as $row ) {
+				if ( ! empty( $row->source_id ) && 'post' === $row->source_type ) {
+					$row->source_url = get_permalink( (int) $row->source_id );
+				} else {
+					$row->source_url = '';
+				}
+			}
+		}
 
 		return $rows ? $rows : array();
 	}

@@ -86,12 +86,11 @@ class LinksListTable extends WP_List_Table {
 	 */
 	public function get_columns(): array {
 		return array(
-			'cb'           => '<input type="checkbox" />',
 			'url'          => __( 'URL', 'yoko-link-checker' ),
 			'status'       => __( 'Status', 'yoko-link-checker' ),
 			'http_code'    => __( 'Code', 'yoko-link-checker' ),
 			'source'       => __( 'Source', 'yoko-link-checker' ),
-			'anchor_text'  => __( 'Anchor Text', 'yoko-link-checker' ),
+			'link_text'    => __( 'Link Text', 'yoko-link-checker' ),
 			'last_checked' => __( 'Last Checked', 'yoko-link-checker' ),
 		);
 	}
@@ -114,15 +113,13 @@ class LinksListTable extends WP_List_Table {
 	/**
 	 * Get bulk actions.
 	 *
+	 * Bulk actions are disabled for this MVP to simplify the interface.
+	 *
 	 * @since 1.0.0
 	 * @return array
 	 */
 	protected function get_bulk_actions(): array {
-		return array(
-			'ignore'   => __( 'Ignore', 'yoko-link-checker' ),
-			'unignore' => __( 'Un-ignore', 'yoko-link-checker' ),
-			'recheck'  => __( 'Recheck', 'yoko-link-checker' ),
-		);
+		return array();
 	}
 
 	/**
@@ -137,9 +134,6 @@ class LinksListTable extends WP_List_Table {
 		$sortable = $this->get_sortable_columns();
 
 		$this->_column_headers = array( $columns, $hidden, $sortable );
-
-		// Process bulk actions.
-		$this->process_bulk_action();
 
 		// Get current page.
 		$current_page = $this->get_pagenum();
@@ -176,90 +170,6 @@ class LinksListTable extends WP_List_Table {
 				'per_page'    => $this->per_page,
 				'total_pages' => ceil( $total_items / $this->per_page ),
 			)
-		);
-	}
-
-	/**
-	 * Process bulk actions.
-	 *
-	 * @since 1.0.0
-	 * @return void
-	 */
-	public function process_bulk_action(): void {
-		$action = $this->current_action();
-
-		if ( ! $action ) {
-			return;
-		}
-
-		// Verify nonce.
-		$nonce = isset( $_REQUEST['_wpnonce'] ) ? sanitize_text_field( wp_unslash( $_REQUEST['_wpnonce'] ) ) : '';
-		if ( ! wp_verify_nonce( $nonce, 'bulk-' . $this->_args['plural'] ) ) {
-			return;
-		}
-
-		// Use manage_options as fallback if custom caps don't exist.
-		if ( ! current_user_can( 'yoko_lc_manage_scans' ) && ! current_user_can( 'manage_options' ) ) {
-			return;
-		}
-
-		$link_ids = isset( $_REQUEST['link_ids'] ) && is_array( $_REQUEST['link_ids'] )
-			? array_map( 'absint', $_REQUEST['link_ids'] )
-			: array();
-
-		if ( empty( $link_ids ) ) {
-			return;
-		}
-
-		$processed = 0;
-
-		switch ( $action ) {
-			case 'ignore':
-				foreach ( $link_ids as $link_id ) {
-					$this->link_repository->update_by_id( $link_id, array( 'ignored' => 1 ) );
-					++$processed;
-				}
-				break;
-
-			case 'unignore':
-				foreach ( $link_ids as $link_id ) {
-					$this->link_repository->update_by_id( $link_id, array( 'ignored' => 0 ) );
-					++$processed;
-				}
-				break;
-
-			case 'recheck':
-				/**
-				 * Fires when links should be rechecked.
-				 *
-				 * @since 1.0.0
-				 * @param array $link_ids Link IDs to recheck.
-				 */
-				do_action( 'yoko_lc_recheck_links', $link_ids );
-				$processed = count( $link_ids );
-				break;
-		}
-
-		// Redirect to avoid re-processing on refresh.
-		if ( $processed > 0 ) {
-			$redirect_url = remove_query_arg( array( 'action', 'action2', 'link_ids', '_wpnonce' ) );
-			$redirect_url = add_query_arg( 'bulk_processed', $processed, $redirect_url );
-			wp_safe_redirect( $redirect_url );
-			exit;
-		}
-	}
-
-	/**
-	 * Column checkbox.
-	 *
-	 * @since 1.0.0
-	 * @param object $item Item.
-	 * @return string
-	 */
-	protected function column_cb( $item ): string {
-		return sprintf(
-			'<input type="checkbox" name="link_ids[]" value="%d" />',
-			absint( $item->link_id )
 		);
 	}
 
@@ -460,13 +370,13 @@ class LinksListTable extends WP_List_Table {
 	}
 
 	/**
-	 * Column anchor text.
+	 * Column link text.
 	 *
 	 * @since 1.0.0
 	 * @param object $item Item.
 	 * @return string
 	 */
-	protected function column_anchor_text( $item ): string {
+	protected function column_link_text( $item ): string {
 		if ( empty( $item->anchor_text ) ) {
 			return '<em>' . esc_html__( '(none)', 'yoko-link-checker' ) . '</em>';
 		}

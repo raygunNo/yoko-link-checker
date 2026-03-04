@@ -17,7 +17,7 @@ $yoko_lc_current_url = admin_url( 'admin.php?page=yoko-link-checker-results' );
 ?>
 
 <div class="wrap ylc-results">
-	<h1 class="wp-heading-inline"><?php esc_html_e( 'Broken Links', 'yoko-link-checker' ); ?></h1>
+	<h1 class="wp-heading-inline"><?php esc_html_e( 'Link Reports', 'yoko-link-checker' ); ?></h1>
 	
 	<hr class="wp-header-end">
 
@@ -41,7 +41,7 @@ $yoko_lc_current_url = admin_url( 'admin.php?page=yoko-link-checker-results' );
 		?>
 	</ul>
 
-	<form id="ylc-links-filter" method="post">
+	<form id="ylc-links-filter" method="get">
 		<input type="hidden" name="page" value="yoko-link-checker-results">
 		<input type="hidden" name="status" value="<?php echo esc_attr( $status_filter ); ?>">
 		

@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.7] - 2026-03-03
+
+### Changed
+- Renamed "Broken Links" submenu to "Reports" for broader reporting functionality
+- Page title changed from "Broken Links" to "Link Reports"
+- Renamed "Anchor Text" column to "Link Text" for clarity
+- CSV export now includes "Source URL" column with actual permalinks
+- Improved CSV column names: "Broken URL", "Source URL", "Source Title", "Source Type", "Error Details"
+- CSV columns reordered for better remediation workflow
+
+### Removed
+- Removed bulk actions (Ignore, Un-ignore, Recheck) to simplify MVP interface
+- Removed checkbox column from results table
+- Removed bulk action processing code
+
 ## [1.0.6] - 2026-03-03
 
 ### Fixed
@@ -90,7 +105,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - PHP 8.0+ support
 - WordPress 6.0+ support
 
-[Unreleased]: https://github.com/Yoko-Co/yoko-link-checker/compare/v1.0.6...HEAD
+[Unreleased]: https://github.com/Yoko-Co/yoko-link-checker/compare/v1.0.7...HEAD
+[1.0.7]: https://github.com/Yoko-Co/yoko-link-checker/compare/v1.0.6...v1.0.7
 [1.0.6]: https://github.com/Yoko-Co/yoko-link-checker/compare/v1.0.5...v1.0.6
 [1.0.5]: https://github.com/Yoko-Co/yoko-link-checker/compare/v1.0.4...v1.0.5
 [1.0.4]: https://github.com/Yoko-Co/yoko-link-checker/compare/v1.0.3...v1.0.4
