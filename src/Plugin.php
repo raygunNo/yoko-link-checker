@@ -77,6 +77,7 @@ final class Plugin {
 		}
 
 		// Register custom cron schedules on every request so WP-Cron recognizes them.
+		// phpcs:ignore WordPress.WP.CronInterval.CronSchedulesInterval -- 60-second interval is intentional for responsive batch processing.
 		add_filter( 'cron_schedules', array( $this, 'add_cron_schedules' ) );
 
 		// Register cron hooks (available in all contexts for WP-Cron).

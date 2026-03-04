@@ -256,8 +256,7 @@ class ResultsPage {
 		header( 'Expires: 0' );
 
 		// Disable output buffering to stream directly to the client.
-		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- ob_end_clean may warn if no buffer active.
-		// phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedWhile -- Intentionally empty loop body to clear all buffers.
+		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged,Generic.CodeAnalysis.EmptyStatement.DetectedWhile -- ob_end_clean may warn if no buffer active; intentionally empty loop body.
 		while ( @ob_end_clean() ) {
 			// Clear all output buffers.
 		}

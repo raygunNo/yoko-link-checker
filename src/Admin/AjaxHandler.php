@@ -456,6 +456,7 @@ class AjaxHandler {
 			return;
 		}
 
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- COMMIT required to finalize transaction.
 		$wpdb->query( 'COMMIT' );
 		// phpcs:enable
 
