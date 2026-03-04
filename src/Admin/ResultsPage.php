@@ -273,6 +273,7 @@ class ResultsPage {
 			);
 		}
 
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Using php://output stream for CSV export.
 		fclose( $output );
 		exit;
 	}

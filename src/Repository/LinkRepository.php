@@ -569,7 +569,7 @@ final class LinkRepository {
 	public function get_all_for_export(): array {
 		global $wpdb;
 
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names cannot be parameterized.
 		$rows = $wpdb->get_results(
 			"SELECT 
 				u.url,
@@ -587,6 +587,7 @@ final class LinkRepository {
 			LEFT JOIN {$wpdb->posts} p ON l.source_id = p.ID AND l.source_type = 'post'
 			ORDER BY u.status ASC, u.url ASC"
 		);
+		// phpcs:enable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.PreparedSQL.InterpolatedNotPrepared
 
 		return $rows ? $rows : array();
 	}
