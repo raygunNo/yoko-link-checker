@@ -189,6 +189,35 @@ final class LinkRepository {
 	}
 
 	/**
+	 * Update a link by ID with specific data.
+	 *
+	 * @since 1.0.5
+	 * @param int                  $id   Link ID.
+	 * @param array<string, mixed> $data Data to update.
+	 * @return bool Whether update succeeded.
+	 */
+	public function update_by_id( int $id, array $data ): bool {
+		global $wpdb;
+
+		if ( empty( $data ) ) {
+			return false;
+		}
+
+		$data['updated_at'] = current_time( 'mysql' );
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
+		$result = $wpdb->update(
+			$this->table,
+			$data,
+			array( 'id' => $id ),
+			$this->get_format( $data ),
+			array( '%d' )
+		);
+
+		return false !== $result;
+	}
+
+	/**
 	 * Delete a link.
 	 *
 	 * @since 1.0.0

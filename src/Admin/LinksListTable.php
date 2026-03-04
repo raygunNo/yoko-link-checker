@@ -216,14 +216,14 @@ class LinksListTable extends WP_List_Table {
 		switch ( $action ) {
 			case 'ignore':
 				foreach ( $link_ids as $link_id ) {
-					$this->link_repository->update( $link_id, array( 'ignored' => 1 ) );
+					$this->link_repository->update_by_id( $link_id, array( 'ignored' => 1 ) );
 					++$processed;
 				}
 				break;
 
 			case 'unignore':
 				foreach ( $link_ids as $link_id ) {
-					$this->link_repository->update( $link_id, array( 'ignored' => 0 ) );
+					$this->link_repository->update_by_id( $link_id, array( 'ignored' => 0 ) );
 					++$processed;
 				}
 				break;
