@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker\Scanner;
 
+defined( 'ABSPATH' ) || exit;
+
 use WP_Post;
 
 /**
@@ -28,17 +30,23 @@ final class ContentDiscovery {
 	 * @return array<string>
 	 */
 	public function get_post_types(): array {
-		$post_types = get_post_types( array( 'public' => true ), 'names' );
+		$configured = get_option( 'yoko_lc_post_types', array() );
 
-		// Remove attachment post type.
+		if ( ! empty( $configured ) ) {
+			/**
+			 * Filters the post types to scan.
+			 *
+			 * @since 1.0.0
+			 * @param array<string> $post_types Post type slugs.
+			 */
+			return apply_filters( 'yoko_lc_scannable_post_types', $configured );
+		}
+
+		// Fallback: scan all public post types except attachments.
+		$post_types = get_post_types( array( 'public' => true ), 'names' );
 		unset( $post_types['attachment'] );
 
-		/**
-		 * Filters the post types to scan.
-		 *
-		 * @since 1.0.0
-		 * @param array<string> $post_types Post type slugs.
-		 */
+		/** This filter is documented above. */
 		return apply_filters( 'yoko_lc_scannable_post_types', array_values( $post_types ) );
 	}
 

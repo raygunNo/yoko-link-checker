@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker\Model;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Scan run entity.
  *
@@ -198,115 +200,4 @@ final class Scan {
 		);
 	}
 
-	/**
-	 * Check if scan is running.
-	 *
-	 * @since 1.0.0
-	 * @return bool
-	 */
-	public function is_running(): bool {
-		return self::STATUS_RUNNING === $this->status;
-	}
-
-	/**
-	 * Check if scan is completed.
-	 *
-	 * @since 1.0.0
-	 * @return bool
-	 */
-	public function is_completed(): bool {
-		return self::STATUS_COMPLETED === $this->status;
-	}
-
-	/**
-	 * Get progress percentage.
-	 *
-	 * @since 1.0.0
-	 * @return float
-	 */
-	public function get_progress(): float {
-		if ( self::PHASE_DISCOVERY === $this->current_phase ) {
-			if ( 0 === $this->total_posts ) {
-				return 0.0;
-			}
-			// Discovery is first 50% of progress, capped at 50%.
-			return min( ( $this->processed_posts / $this->total_posts ) * 50.0, 50.0 );
-		}
-
-		if ( self::PHASE_CHECKING === $this->current_phase ) {
-			if ( 0 === $this->total_urls ) {
-				return 50.0;
-			}
-			// Checking is second 50% of progress, capped at 100%.
-			$check_progress = min( ( $this->checked_urls / $this->total_urls ) * 50.0, 50.0 );
-			return 50.0 + $check_progress;
-		}
-
-		return 0.0;
-	}
-
-	/**
-	 * Get human-readable status label.
-	 *
-	 * @since 1.0.0
-	 * @return string
-	 */
-	public function get_status_label(): string {
-		$labels = array(
-			self::STATUS_PENDING   => __( 'Pending', 'yoko-link-checker' ),
-			self::STATUS_RUNNING   => __( 'Running', 'yoko-link-checker' ),
-			self::STATUS_PAUSED    => __( 'Paused', 'yoko-link-checker' ),
-			self::STATUS_COMPLETED => __( 'Completed', 'yoko-link-checker' ),
-			self::STATUS_FAILED    => __( 'Failed', 'yoko-link-checker' ),
-			self::STATUS_CANCELLED => __( 'Cancelled', 'yoko-link-checker' ),
-		);
-
-		return $labels[ $this->status ] ?? $this->status;
-	}
-
-	/**
-	 * Get duration in seconds.
-	 *
-	 * @since 1.0.0
-	 * @return int
-	 */
-	public function get_duration(): int {
-		if ( null === $this->started_at ) {
-			return 0;
-		}
-
-		$start = strtotime( $this->started_at );
-		$end   = null !== $this->completed_at ? strtotime( $this->completed_at ) : time();
-
-		return max( 0, $end - $start );
-	}
-
-	/**
-	 * Get formatted duration.
-	 *
-	 * @since 1.0.0
-	 * @return string
-	 */
-	public function get_formatted_duration(): string {
-		$seconds = $this->get_duration();
-
-		if ( $seconds < 60 ) {
-			/* translators: %d: number of seconds */
-			return sprintf( _n( '%d second', '%d seconds', $seconds, 'yoko-link-checker' ), $seconds );
-		}
-
-		$minutes = (int) floor( $seconds / 60 );
-		$secs    = $seconds % 60;
-
-		if ( $minutes < 60 ) {
-			/* translators: 1: number of minutes, 2: number of seconds */
-			return sprintf( __( '%1$d min %2$d sec', 'yoko-link-checker' ), $minutes, $secs );
-		}
-
-		$hours = (int) floor( $minutes / 60 );
-		$mins  = $minutes % 60;
-
-		/* translators: 1: number of hours, 2: number of minutes */
-		return sprintf( __( '%1$d hr %2$d min', 'yoko-link-checker' ), $hours, $mins );
-	}
 }

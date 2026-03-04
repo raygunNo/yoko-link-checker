@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker\Scanner;
 
+defined( 'ABSPATH' ) || exit;
+
 use YokoLinkChecker\Repository\ScanRepository;
 use YokoLinkChecker\Repository\UrlRepository;
 use YokoLinkChecker\Model\Scan;
@@ -260,6 +262,7 @@ class ScanOrchestrator {
 		 * @param int $batch_size Default batch size.
 		 */
 		$batch_size = apply_filters( 'yoko_lc_discovery_batch_size', 50 );
+		$batch_size = max( 1, min( (int) $batch_size, 500 ) );
 
 		// Get cursor from scan metadata.
 		$cursor = $this->get_scan_cursor( $scan->id, 'discovery' );
@@ -293,6 +296,7 @@ class ScanOrchestrator {
 		 * @param int $batch_size Default batch size.
 		 */
 		$batch_size = apply_filters( 'yoko_lc_checking_batch_size', 5 );
+		$batch_size = max( 1, min( (int) $batch_size, 500 ) );
 
 		// Get cursor from scan metadata.
 		$cursor = $this->get_scan_cursor( $scan->id, 'checking' );
@@ -346,8 +350,8 @@ class ScanOrchestrator {
 	 * @return void
 	 */
 	private function transition_to_checking( int $scan_id ): void {
-		// Count total URLs to check.
-		$total_urls = $this->url_repository->count();
+		// Count only pending URLs to check (exclude already-checked URLs from previous scans).
+		$total_urls = $this->url_repository->count( \YokoLinkChecker\Model\Url::STATUS_PENDING );
 
 		$this->scan_repository->update_phase( $scan_id, Scan::PHASE_CHECKING );
 
@@ -514,6 +518,7 @@ class ScanOrchestrator {
 		 * @param int $delay Default delay.
 		 */
 		$delay = apply_filters( 'yoko_lc_batch_delay', 1 );
+		$delay = max( 0, min( (int) $delay, 300 ) );
 
 		if ( ! wp_next_scheduled( self::CRON_HOOK, array( $scan_id ) ) ) {
 			wp_schedule_single_event(
@@ -664,10 +669,8 @@ class ScanOrchestrator {
 			$done     = $scan->processed_posts;
 			$progress = $total > 0 ? min( ( $done / $total ) * 50.0, 50.0 ) : 0.0;
 		} elseif ( Scan::PHASE_CHECKING === $scan->current_phase ) {
-			// Use current pending count + checked for accurate total.
-			$pending  = $this->url_repository->count( \YokoLinkChecker\Model\Url::STATUS_PENDING );
 			$done     = $scan->checked_urls;
-			$total    = $pending + $done; // Dynamic total.
+			$total    = $scan->total_urls;
 			$progress = 50.0 + ( $total > 0 ? min( ( $done / $total ) * 50.0, 50.0 ) : 0.0 );
 		} elseif ( Scan::STATUS_COMPLETED === $scan->status ) {
 			$progress = 100.0;

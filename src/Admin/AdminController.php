@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker\Admin;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Admin controller class.
  *
@@ -258,17 +260,17 @@ class AdminController {
 
 		// Sanitize and save settings.
 		$post_types = isset( $_POST['yoko_lc_post_types'] ) && is_array( $_POST['yoko_lc_post_types'] )
-			? array_map( 'sanitize_key', $_POST['yoko_lc_post_types'] )
+			? array_map( 'sanitize_key', wp_unslash( $_POST['yoko_lc_post_types'] ) )
 			: array( 'post', 'page' );
 
 		$check_timeout = isset( $_POST['yoko_lc_check_timeout'] )
-			? absint( $_POST['yoko_lc_check_timeout'] )
+			? absint( wp_unslash( $_POST['yoko_lc_check_timeout'] ) )
 			: 30;
 
 		$auto_scan = isset( $_POST['yoko_lc_auto_scan_enabled'] );
 
 		$scan_frequency = isset( $_POST['yoko_lc_auto_scan_frequency'] )
-			? sanitize_key( $_POST['yoko_lc_auto_scan_frequency'] )
+			? sanitize_key( wp_unslash( $_POST['yoko_lc_auto_scan_frequency'] ) )
 			: 'weekly';
 
 		$allowed_frequencies = array( 'hourly', 'twicedaily', 'daily', 'weekly' );
@@ -280,6 +282,13 @@ class AdminController {
 		update_option( 'yoko_lc_check_timeout', min( 120, max( 5, $check_timeout ) ) );
 		update_option( 'yoko_lc_auto_scan_enabled', $auto_scan );
 		update_option( 'yoko_lc_auto_scan_frequency', $scan_frequency );
+
+		// Sync cron schedule with saved auto-scan settings.
+		wp_clear_scheduled_hook( 'yoko_lc_auto_scan' );
+
+		if ( $auto_scan ) {
+			wp_schedule_event( time(), $scan_frequency, 'yoko_lc_auto_scan' );
+		}
 
 		add_settings_error( 'yoko_lc_settings', 'saved', __( 'Settings saved.', 'yoko-link-checker' ), 'success' );
 	}

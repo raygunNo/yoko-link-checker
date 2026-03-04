@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker\Model;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * URL entity.
  *
@@ -257,56 +259,4 @@ final class Url {
 		);
 	}
 
-	/**
-	 * Check if URL has a problem status.
-	 *
-	 * @since 1.0.0
-	 * @return bool
-	 */
-	public function has_problem(): bool {
-		return in_array( $this->status, self::PROBLEM_STATUSES, true );
-	}
-
-	/**
-	 * Check if URL needs checking.
-	 *
-	 * @since 1.0.0
-	 * @return bool
-	 */
-	public function needs_check(): bool {
-		if ( $this->is_ignored ) {
-			return false;
-		}
-
-		if ( self::STATUS_PENDING === $this->status ) {
-			return true;
-		}
-
-		if ( null === $this->next_check ) {
-			return false;
-		}
-
-		return strtotime( $this->next_check ) <= time();
-	}
-
-	/**
-	 * Get human-readable status label.
-	 *
-	 * @since 1.0.0
-	 * @return string
-	 */
-	public function get_status_label(): string {
-		$labels = array(
-			self::STATUS_PENDING  => __( 'Pending', 'yoko-link-checker' ),
-			self::STATUS_VALID    => __( 'Valid', 'yoko-link-checker' ),
-			self::STATUS_REDIRECT => __( 'Redirect', 'yoko-link-checker' ),
-			self::STATUS_BROKEN   => __( 'Broken', 'yoko-link-checker' ),
-			self::STATUS_WARNING  => __( 'Warning', 'yoko-link-checker' ),
-			self::STATUS_BLOCKED  => __( 'Blocked', 'yoko-link-checker' ),
-			self::STATUS_TIMEOUT  => __( 'Timeout', 'yoko-link-checker' ),
-			self::STATUS_ERROR    => __( 'Error', 'yoko-link-checker' ),
-		);
-
-		return $labels[ $this->status ] ?? $this->status;
-	}
 }

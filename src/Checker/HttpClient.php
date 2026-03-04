@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker\Checker;
 
+defined( 'ABSPATH' ) || exit;
+
 use WP_Error;
 
 /**
@@ -55,6 +57,13 @@ final class HttpClient {
 	 * @var int
 	 */
 	private int $connect_timeout;
+
+	/**
+	 * Static DNS resolution cache to avoid repeated gethostbyname() lookups.
+	 *
+	 * @var array<string, string>
+	 */
+	private static array $dns_cache = array();
 
 	/**
 	 * Constructor.
@@ -395,8 +404,13 @@ final class HttpClient {
 		// Check if host is an IP address.
 		$ip = filter_var( $host, FILTER_VALIDATE_IP );
 		if ( ! $ip ) {
-			// Resolve hostname to IP.
-			$ip = gethostbyname( $host );
+			// Resolve hostname to IP, using static cache to avoid repeated lookups.
+			if ( isset( self::$dns_cache[ $host ] ) ) {
+				$ip = self::$dns_cache[ $host ];
+			} else {
+				$ip = gethostbyname( $host );
+				self::$dns_cache[ $host ] = $ip;
+			}
 			if ( $ip === $host ) {
 				return false; // DNS resolution failed.
 			}

@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker\Repository;
 
+defined( 'ABSPATH' ) || exit;
+
 use YokoLinkChecker\Model\Link;
 use YokoLinkChecker\Model\Url;
 
@@ -186,55 +188,6 @@ final class LinkRepository {
 			$data,
 			array( 'id' => $link->id ),
 			$this->get_format( $data ),
-			array( '%d' )
-		);
-
-		return false !== $result;
-	}
-
-	/**
-	 * Update a link by ID with specific data.
-	 *
-	 * @since 1.0.5
-	 * @param int                  $id   Link ID.
-	 * @param array<string, mixed> $data Data to update.
-	 * @return bool Whether update succeeded.
-	 */
-	public function update_by_id( int $id, array $data ): bool {
-		global $wpdb;
-
-		if ( empty( $data ) ) {
-			return false;
-		}
-
-		$data['updated_at'] = current_time( 'mysql' );
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$result = $wpdb->update(
-			$this->table,
-			$data,
-			array( 'id' => $id ),
-			$this->get_format( $data ),
-			array( '%d' )
-		);
-
-		return false !== $result;
-	}
-
-	/**
-	 * Delete a link.
-	 *
-	 * @since 1.0.0
-	 * @param int $id Link ID.
-	 * @return bool Whether deletion succeeded.
-	 */
-	public function delete( int $id ): bool {
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$result = $wpdb->delete(
-			$this->table,
-			array( 'id' => $id ),
 			array( '%d' )
 		);
 
@@ -690,7 +643,9 @@ final class LinkRepository {
 				        l.source_id, l.source_type, l.anchor_text,
 				        p.post_title
 				 FROM {$this->urls_table} u
-				 LEFT JOIN {$this->table} l ON u.id = l.url_id
+				 LEFT JOIN {$this->table} l ON l.id = (
+				     SELECT l2.id FROM {$this->table} l2 WHERE l2.url_id = u.id LIMIT 1
+				 )
 				 LEFT JOIN {$wpdb->posts} p ON l.source_id = p.ID
 				 WHERE u.status = %s
 				 ORDER BY u.last_checked DESC

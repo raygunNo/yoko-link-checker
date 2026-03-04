@@ -14,6 +14,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker\Util;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * URL normalization service.
  *

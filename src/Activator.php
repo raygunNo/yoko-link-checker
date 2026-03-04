@@ -2,8 +2,8 @@
 /**
  * Plugin Activator.
  *
- * Handles plugin activation: creates database tables,
- * sets default options, and schedules initial cron events.
+ * Handles plugin activation: creates database tables
+ * and sets default options.
  *
  * @package YokoLinkChecker
  * @since   1.0.0
@@ -12,6 +12,8 @@
 declare(strict_types=1);
 
 namespace YokoLinkChecker;
+
+defined( 'ABSPATH' ) || exit;
 
 /**
  * Handles plugin activation.
@@ -45,11 +47,7 @@ final class Activator {
 	public static function activate(): void {
 		self::create_tables();
 		self::set_default_options();
-		self::schedule_cron_events();
 		self::set_capabilities();
-
-		// Flush rewrite rules on next page load.
-		set_transient( 'yoko_lc_flush_rewrite', 1, 60 );
 
 		// Record activation.
 		update_option( 'yoko_lc_activated_at', current_time( 'mysql' ) );
@@ -181,18 +179,6 @@ final class Activator {
 	}
 
 	/**
-	 * Schedule cron events.
-	 *
-	 * @since 1.0.0
-	 * @return void
-	 */
-	private static function schedule_cron_events(): void {
-		// Note: We don't auto-schedule scans.
-		// Scans are user-initiated in the MVP.
-		// Future: Add scheduled scan option.
-	}
-
-	/**
 	 * Set up custom capabilities.
 	 *
 	 * @since 1.0.0
@@ -208,35 +194,4 @@ final class Activator {
 		}
 	}
 
-	/**
-	 * Check if table exists.
-	 *
-	 * @since 1.0.0
-	 * @param string $table_name Full table name including prefix.
-	 * @return bool
-	 */
-	public static function table_exists( string $table_name ): bool {
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$result = $wpdb->get_var(
-			$wpdb->prepare(
-				'SHOW TABLES LIKE %s',
-				$table_name
-			)
-		);
-
-		return $result === $table_name;
-	}
-
-	/**
-	 * Check if schema needs upgrade.
-	 *
-	 * @since 1.0.0
-	 * @return bool
-	 */
-	public static function needs_upgrade(): bool {
-		$installed_version = get_option( self::SCHEMA_VERSION_OPTION, '0.0.0' );
-		return version_compare( $installed_version, self::SCHEMA_VERSION, '<' );
-	}
 }

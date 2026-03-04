@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker;
 
+defined( 'ABSPATH' ) || exit;
+
 use YokoLinkChecker\Admin\AdminController;
 use YokoLinkChecker\Admin\AjaxHandler;
 use YokoLinkChecker\Admin\DashboardPage;
@@ -164,6 +166,10 @@ final class Plugin {
 	 * @return void
 	 */
 	public function handle_auto_scan(): void {
+		if ( ! get_option( 'yoko_lc_auto_scan_enabled', false ) ) {
+			return;
+		}
+
 		$this->scan_orchestrator()->start_scan( 'full' );
 	}
 
@@ -256,7 +262,7 @@ final class Plugin {
 	public function http_client(): HttpClient {
 		return $this->get_service(
 			HttpClient::class,
-			fn() => new HttpClient()
+			fn() => new HttpClient( (int) get_option( 'yoko_lc_check_timeout', 8 ) )
 		);
 	}
 

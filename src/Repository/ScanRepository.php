@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker\Repository;
 
+defined( 'ABSPATH' ) || exit;
+
 use YokoLinkChecker\Model\Scan;
 
 /**
@@ -96,16 +98,6 @@ final class ScanRepository {
 		);
 
 		return $row ? Scan::from_row( $row ) : null;
-	}
-
-	/**
-	 * Check if a scan is currently running.
-	 *
-	 * @since 1.0.0
-	 * @return bool
-	 */
-	public function is_running(): bool {
-		return null !== $this->get_running();
 	}
 
 	/**
@@ -255,40 +247,6 @@ final class ScanRepository {
 	}
 
 	/**
-	 * Delete a scan.
-	 *
-	 * @since 1.0.0
-	 * @param int $id Scan ID.
-	 * @return bool Whether deletion succeeded.
-	 */
-	public function delete( int $id ): bool {
-		global $wpdb;
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$result = $wpdb->delete(
-			$this->table,
-			array( 'id' => $id ),
-			array( '%d' )
-		);
-
-		return false !== $result;
-	}
-
-	/**
-	 * Start a scan.
-	 *
-	 * @since 1.0.0
-	 * @param Scan $scan Scan to start.
-	 * @return bool
-	 */
-	public function start( Scan $scan ): bool {
-		$scan->status     = Scan::STATUS_RUNNING;
-		$scan->started_at = current_time( 'mysql' );
-
-		return $this->update( $scan );
-	}
-
-	/**
 	 * Complete a scan.
 	 *
 	 * @since 1.0.0
@@ -385,42 +343,6 @@ final class ScanRepository {
 		}
 
 		return $this->update( $scan );
-	}
-
-	/**
-	 * Clean up old completed scans.
-	 *
-	 * @since 1.0.0
-	 * @param int $keep Number of recent scans to keep.
-	 * @return int Number of scans deleted.
-	 */
-	public function cleanup_old( int $keep = 10 ): int {
-		global $wpdb;
-
-		// Get IDs to keep.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$keep_ids = $wpdb->get_col(
-			$wpdb->prepare(
-				"SELECT id FROM {$this->table} ORDER BY id DESC LIMIT %d", // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-				$keep
-			)
-		);
-
-		if ( empty( $keep_ids ) ) {
-			return 0;
-		}
-
-		$keep_ids_str = implode( ',', array_map( 'intval', $keep_ids ) );
-
-		// Delete older scans.
-		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name is safe, $keep_ids_str is sanitized with intval.
-		$result = $wpdb->query(
-			"DELETE FROM {$this->table} WHERE id NOT IN ({$keep_ids_str})"
-		);
-		// phpcs:enable
-
-		return false !== $result ? (int) $result : 0;
 	}
 
 	/**

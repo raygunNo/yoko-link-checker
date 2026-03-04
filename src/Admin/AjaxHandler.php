@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker\Admin;
 
+defined( 'ABSPATH' ) || exit;
+
 use YokoLinkChecker\Scanner\ScanOrchestrator;
 use YokoLinkChecker\Scanner\BatchProcessor;
 use YokoLinkChecker\Repository\UrlRepository;
@@ -93,7 +95,9 @@ class AjaxHandler {
 		add_action( 'wp_ajax_yoko_lc_ignore_link', array( $this, 'ignore_link' ) );
 		add_action( 'wp_ajax_yoko_lc_unignore_link', array( $this, 'unignore_link' ) );
 
-		// Stats.
+		// Stats — internal API endpoint. Not currently called by the admin JS
+		// (dashboard stats are rendered server-side), but retained for future
+		// programmatic / REST API access (see #055).
 		add_action( 'wp_ajax_yoko_lc_get_stats', array( $this, 'get_stats' ) );
 
 		// Data management.
@@ -442,23 +446,19 @@ class AjaxHandler {
 		$urls_table  = $wpdb->prefix . 'yoko_lc_urls';
 		$scans_table = $wpdb->prefix . 'yoko_lc_scans';
 
-		// Delete all data within a transaction for safety.
+		// Truncate all tables. TRUNCATE is O(1) — it drops and re-creates the
+		// table rather than deleting rows one-by-one. Note: TRUNCATE performs an
+		// implicit commit so it cannot be wrapped in a transaction.
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching,WordPress.DB.DirectDatabaseQuery.SchemaChange,WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table names cannot be parameterized.
-		$wpdb->query( 'START TRANSACTION' );
-		$r1 = $wpdb->query( "DELETE FROM {$links_table}" );
-		$r2 = $wpdb->query( "DELETE FROM {$urls_table}" );
-		$r3 = $wpdb->query( "DELETE FROM {$scans_table}" );
+		$r1 = $wpdb->query( "TRUNCATE TABLE {$links_table}" );
+		$r2 = $wpdb->query( "TRUNCATE TABLE {$urls_table}" );
+		$r3 = $wpdb->query( "TRUNCATE TABLE {$scans_table}" );
+		// phpcs:enable
 
 		if ( false === $r1 || false === $r2 || false === $r3 ) {
-			$wpdb->query( 'ROLLBACK' );
-			// phpcs:enable
 			wp_send_json_error( array( 'message' => __( 'Failed to clear data.', 'yoko-link-checker' ) ) );
 			return;
 		}
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- COMMIT required to finalize transaction.
-		$wpdb->query( 'COMMIT' );
-		// phpcs:enable
 
 		// Clear any scheduled cron events.
 		wp_clear_scheduled_hook( 'yoko_lc_process_scan_batch' );

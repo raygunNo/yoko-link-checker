@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker\Scanner;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Scan state value object.
  *

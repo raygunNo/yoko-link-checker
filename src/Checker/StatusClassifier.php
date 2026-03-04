@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker\Checker;
 
+defined( 'ABSPATH' ) || exit;
+
 use YokoLinkChecker\Model\Url;
 
 /**
@@ -245,57 +247,4 @@ final class StatusClassifier {
 		return null;
 	}
 
-	/**
-	 * Get a human-readable explanation for a status.
-	 *
-	 * @since 1.0.0
-	 * @param string   $status    Status to explain.
-	 * @param int|null $http_code HTTP code if available.
-	 * @return string Explanation.
-	 */
-	public function get_explanation( string $status, ?int $http_code = null ): string {
-		switch ( $status ) {
-			case Url::STATUS_VALID:
-				return __( 'Link is working correctly.', 'yoko-link-checker' );
-
-			case Url::STATUS_REDIRECT:
-				return __( 'Link redirects to another URL.', 'yoko-link-checker' );
-
-			case Url::STATUS_BROKEN:
-				if ( 404 === $http_code ) {
-					return __( 'Page not found (404).', 'yoko-link-checker' );
-				}
-				if ( 410 === $http_code ) {
-					return __( 'Page permanently removed (410 Gone).', 'yoko-link-checker' );
-				}
-				return __( 'Link is broken and returns an error.', 'yoko-link-checker' );
-
-			case Url::STATUS_WARNING:
-				if ( 403 === $http_code ) {
-					return __( 'Access forbidden (403). This may be a false positive.', 'yoko-link-checker' );
-				}
-				if ( 429 === $http_code ) {
-					return __( 'Rate limited (429). Try again later.', 'yoko-link-checker' );
-				}
-				if ( 503 === $http_code ) {
-					return __( 'Service temporarily unavailable (503).', 'yoko-link-checker' );
-				}
-				return __( 'Link returned a warning status. May be temporary.', 'yoko-link-checker' );
-
-			case Url::STATUS_BLOCKED:
-				return __( 'Connection was blocked or refused.', 'yoko-link-checker' );
-
-			case Url::STATUS_TIMEOUT:
-				return __( 'Request timed out. Server may be slow or unavailable.', 'yoko-link-checker' );
-
-			case Url::STATUS_ERROR:
-				return __( 'An error occurred while checking this link.', 'yoko-link-checker' );
-
-			case Url::STATUS_PENDING:
-				return __( 'Link has not been checked yet.', 'yoko-link-checker' );
-
-			default:
-				return __( 'Unknown status.', 'yoko-link-checker' );
-		}
-	}
 }

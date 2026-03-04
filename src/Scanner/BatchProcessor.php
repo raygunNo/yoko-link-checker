@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker\Scanner;
 
+defined( 'ABSPATH' ) || exit;
+
 use YokoLinkChecker\Extractor\ExtractorRegistry;
 use YokoLinkChecker\Repository\UrlRepository;
 use YokoLinkChecker\Repository\LinkRepository;
@@ -306,7 +308,7 @@ class BatchProcessor {
 						$url->response_time  = $result->response_time;
 						$url->error_type     = $result->error_type;
 						$url->error_message  = $result->error_message;
-						$url->last_checked   = current_time( 'mysql', true );
+						$url->last_checked   = current_time( 'mysql' );
 						$url->check_count    = ( $url->check_count ?? 0 ) + 1;
 
 						try {
@@ -429,6 +431,9 @@ class BatchProcessor {
 		 * @param Url  $url  URL model.
 		 */
 		if ( apply_filters( 'yoko_lc_skip_url_check', false, $url ) ) {
+			$url->status       = Url::STATUS_VALID;
+			$url->last_checked = current_time( 'mysql' );
+			$this->url_repository->update( $url );
 			return;
 		}
 
@@ -445,9 +450,11 @@ class BatchProcessor {
 		$url->status        = $result->status;
 		$url->http_code     = $result->http_code;
 		$url->final_url     = $result->final_url;
-		$url->error_message = $result->error_message;
-		$url->response_time = $result->response_time;
-		$url->last_checked  = current_time( 'mysql' );
+		$url->redirect_count = $result->redirect_count;
+		$url->error_type     = $result->error_type;
+		$url->error_message  = $result->error_message;
+		$url->response_time  = $result->response_time;
+		$url->last_checked   = current_time( 'mysql' );
 		$url->check_count   = ( $url->check_count ?? 0 ) + 1;
 
 		$this->url_repository->update( $url );
@@ -476,7 +483,7 @@ class BatchProcessor {
 	private function mark_url_error( Url $url, string $error_message ): void {
 		$url->status        = Url::STATUS_ERROR;
 		$url->error_message = substr( $error_message, 0, 255 );
-		$url->last_checked  = current_time( 'mysql', true );
+		$url->last_checked  = current_time( 'mysql' );
 		$url->check_count   = ( $url->check_count ?? 0 ) + 1;
 
 		try {
@@ -664,23 +671,4 @@ class BatchProcessor {
 		return true;
 	}
 
-	/**
-	 * Get time estimate for remaining work.
-	 *
-	 * @since 1.0.0
-	 * @param ScanState $state      Current state.
-	 * @param float     $batch_time Time taken for last batch in seconds.
-	 * @return int Estimated seconds remaining.
-	 */
-	public function estimate_remaining_time( ScanState $state, float $batch_time ): int {
-		if ( $state->complete || 0 === $state->last_batch_count ) {
-			return 0;
-		}
-
-		$remaining_items   = $state->total - $state->processed;
-		$time_per_item     = $batch_time / $state->last_batch_count;
-		$estimated_seconds = (int) ceil( $remaining_items * $time_per_item );
-
-		return $estimated_seconds;
-	}
 }

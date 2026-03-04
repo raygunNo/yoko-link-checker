@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker\Repository;
 
+defined( 'ABSPATH' ) || exit;
+
 use YokoLinkChecker\Model\Url;
 use YokoLinkChecker\Util\UrlNormalizer;
 
@@ -216,32 +218,6 @@ final class UrlRepository {
 	}
 
 	/**
-	 * Delete a URL and all its links.
-	 *
-	 * @since 1.0.0
-	 * @param int $id URL ID.
-	 * @return bool Whether deletion succeeded.
-	 */
-	public function delete( int $id ): bool {
-		global $wpdb;
-
-		$links_table = $wpdb->prefix . 'yoko_lc_links';
-
-		// Delete associated links first.
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$wpdb->delete( $links_table, array( 'url_id' => $id ), array( '%d' ) );
-
-		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		$result = $wpdb->delete(
-			$this->table,
-			array( 'id' => $id ),
-			array( '%d' )
-		);
-
-		return false !== $result;
-	}
-
-	/**
 	 * Get URLs needing checking.
 	 *
 	 * @since 1.0.0
@@ -266,65 +242,6 @@ final class UrlRepository {
 				Url::STATUS_PENDING,
 				$after_id,
 				$limit
-			)
-		);
-		// phpcs:enable
-
-		return array_map( fn( $row ) => Url::from_row( $row ), $rows );
-	}
-
-	/**
-	 * Get URLs due for recheck.
-	 *
-	 * @since 1.0.0
-	 * @param int $limit Maximum URLs to return.
-	 * @return array<Url>
-	 */
-	public function get_due_for_recheck( int $limit = 20 ): array {
-		global $wpdb;
-
-		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name is safe.
-		$rows = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT * FROM {$this->table} 
-				WHERE next_check IS NOT NULL 
-				AND next_check <= %s 
-				AND is_ignored = 0 
-				ORDER BY next_check ASC 
-				LIMIT %d",
-				current_time( 'mysql' ),
-				$limit
-			)
-		);
-		// phpcs:enable
-
-		return array_map( fn( $row ) => Url::from_row( $row ), $rows );
-	}
-
-	/**
-	 * Get URLs by status.
-	 *
-	 * @since 1.0.0
-	 * @param string $status Status to filter by.
-	 * @param int    $limit  Maximum URLs to return.
-	 * @param int    $offset Offset for pagination.
-	 * @return array<Url>
-	 */
-	public function get_by_status( string $status, int $limit = 50, int $offset = 0 ): array {
-		global $wpdb;
-
-		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name is safe.
-		$rows = $wpdb->get_results(
-			$wpdb->prepare(
-				"SELECT * FROM {$this->table} 
-				WHERE status = %s 
-				ORDER BY last_checked DESC 
-				LIMIT %d OFFSET %d",
-				$status,
-				$limit,
-				$offset
 			)
 		);
 		// phpcs:enable
@@ -430,30 +347,6 @@ final class UrlRepository {
 		);
 
 		return false !== $result;
-	}
-
-	/**
-	 * Reset all URLs to pending state.
-	 *
-	 * @since 1.0.0
-	 * @return int Number of URLs reset.
-	 */
-	public function reset_all(): int {
-		global $wpdb;
-
-		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
-		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name is safe.
-		$result = $wpdb->query(
-			$wpdb->prepare(
-				"UPDATE {$this->table} SET status = %s, http_code = NULL, final_url = NULL, 
-				redirect_count = 0, response_time = NULL, error_type = NULL, error_message = NULL 
-				WHERE is_ignored = 0",
-				Url::STATUS_PENDING
-			)
-		);
-		// phpcs:enable
-
-		return false !== $result ? (int) $result : 0;
 	}
 
 	/**

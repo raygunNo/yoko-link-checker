@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker\Admin;
 
+defined( 'ABSPATH' ) || exit;
+
 use YokoLinkChecker\Repository\LinkRepository;
 use YokoLinkChecker\Repository\UrlRepository;
 use YokoLinkChecker\Repository\ScanRepository;
@@ -194,8 +196,7 @@ class DashboardPage {
 		return sprintf(
 			/* translators: %s: human-readable time difference */
 			__( '%s ago', 'yoko-link-checker' ),
-			// phpcs:ignore WordPress.DateTime.CurrentTimeTimestamp.Requested -- Used for local time comparison.
-			human_time_diff( $timestamp, current_time( 'timestamp' ) )
+			human_time_diff( $timestamp, time() )
 		);
 	}
 

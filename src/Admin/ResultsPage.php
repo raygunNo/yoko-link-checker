@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker\Admin;
 
+defined( 'ABSPATH' ) || exit;
+
 use YokoLinkChecker\Repository\LinkRepository;
 use YokoLinkChecker\Repository\UrlRepository;
 use YokoLinkChecker\Model\Url;
@@ -251,7 +253,7 @@ class ResultsPage {
 		// Set headers for CSV download.
 		$filename = 'yoko-link-checker-export-' . gmdate( 'Y-m-d-His' ) . '.csv';
 		header( 'Content-Type: text/csv; charset=utf-8' );
-		header( 'Content-Disposition: attachment; filename=' . $filename );
+		header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
 		header( 'Pragma: no-cache' );
 		header( 'Expires: 0' );
 
@@ -290,14 +292,14 @@ class ResultsPage {
 			fputcsv(
 				$output,
 				array(
-					$link->url ?? '',
+					$this->sanitize_csv_value( $link->url ?? '' ),
 					$link->status ?? '',
 					$link->http_code ?? '',
-					$link->error_message ?? '',
+					$this->sanitize_csv_value( $link->error_message ?? '' ),
 					$link->source_url ?? '',
-					$link->post_title ?? '',
+					$this->sanitize_csv_value( $link->post_title ?? '' ),
 					$link->post_type ?? '',
-					$link->link_text ?? '',
+					$this->sanitize_csv_value( $link->link_text ?? '' ),
 					$link->last_checked ?? '',
 				)
 			);
@@ -316,6 +318,22 @@ class ResultsPage {
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Using php://output stream for CSV export.
 		fclose( $output );
 		exit;
+	}
+
+	/**
+	 * Sanitize a value for safe CSV export by escaping formula-triggering characters.
+	 *
+	 * Prevents CSV formula injection by prefixing dangerous characters with a single quote.
+	 *
+	 * @since 1.0.10
+	 * @param string $value The value to sanitize.
+	 * @return string The sanitized value.
+	 */
+	private function sanitize_csv_value( $value ) {
+		if ( is_string( $value ) && isset( $value[0] ) && in_array( $value[0], array( '=', '+', '-', '@', "\t", "\r" ), true ) ) {
+			return "'" . $value;
+		}
+		return $value;
 	}
 
 	/**

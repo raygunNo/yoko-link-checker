@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker\Checker;
 
+defined( 'ABSPATH' ) || exit;
+
 use YokoLinkChecker\Model\Url;
 use YokoLinkChecker\Util\Logger;
 
@@ -182,11 +184,6 @@ final class UrlChecker {
 			$url,
 			$final_url
 		);
-
-		// Check if URL changed to mark as redirect.
-		if ( Url::STATUS_VALID === $status && $final_url !== $url ) {
-			$status = Url::STATUS_REDIRECT;
-		}
 
 		return new CheckResult(
 			$url,
@@ -513,10 +510,6 @@ final class UrlChecker {
 			}
 
 			$status = $this->classifier->classify( $http_code, null, null, $url, $final_url );
-
-			if ( Url::STATUS_VALID === $status && $final_url !== $url ) {
-				$status = Url::STATUS_REDIRECT;
-			}
 
 			$response_headers = array();
 			if ( is_array( $response->headers ) ) {

@@ -57,9 +57,12 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	}
 
 	// Remove scan cursor and last-activity options (dynamic keys).
-	// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 	$wpdb->query(
-		"DELETE FROM {$wpdb->options} WHERE option_name LIKE 'yoko_lc_scan_%'"
+		$wpdb->prepare(
+			"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s",
+			$wpdb->esc_like( 'yoko_lc_scan_' ) . '%'
+		)
 	);
 
 	/**
@@ -93,8 +96,12 @@ if ( ! defined( 'WP_UNINSTALL_PLUGIN' ) ) {
 	 */
 	delete_transient( 'yoko_lc_scan_lock' );
 
-	// phpcs:ignore WordPress.DB.DirectDatabaseQuery
+	// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 	$wpdb->query(
-		"DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_yoko_lc_%' OR option_name LIKE '_transient_timeout_yoko_lc_%'"
+		$wpdb->prepare(
+			"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+			$wpdb->esc_like( '_transient_yoko_lc_' ) . '%',
+			$wpdb->esc_like( '_transient_timeout_yoko_lc_' ) . '%'
+		)
 	);
 } )();

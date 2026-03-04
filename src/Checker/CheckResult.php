@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker\Checker;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Check result value object.
  *

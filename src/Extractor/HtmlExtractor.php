@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker\Extractor;
 
+defined( 'ABSPATH' ) || exit;
+
 use WP_Post;
 use DOMDocument;
 use DOMXPath;
@@ -97,9 +99,6 @@ final class HtmlExtractor implements ExtractorInterface {
 			return array();
 		}
 
-		// Get the post permalink for resolving relative URLs.
-		$base_url = get_permalink( $post );
-
 		$links = array();
 
 		// Parse content as DOM.
@@ -107,16 +106,16 @@ final class HtmlExtractor implements ExtractorInterface {
 
 		if ( ! $dom ) {
 			// Fallback to regex if DOM parsing fails.
-			return $this->extract_with_regex( $content, $base_url );
+			return $this->extract_with_regex( $content );
 		}
 
 		// Extract anchors.
-		$anchors = $this->extract_anchors( $dom, $base_url );
+		$anchors = $this->extract_anchors( $dom );
 		$links   = array_merge( $links, $anchors );
 
 		// Extract images if enabled.
 		if ( $this->extract_images ) {
-			$images = $this->extract_images( $dom, $base_url );
+			$images = $this->extract_images( $dom );
 			$links  = array_merge( $links, $images );
 		}
 
@@ -159,11 +158,10 @@ final class HtmlExtractor implements ExtractorInterface {
 	 * Extract anchor links from DOM.
 	 *
 	 * @since 1.0.0
-	 * @param DOMDocument  $dom      DOM document.
-	 * @param string|false $base_url Base URL for relative links.
+	 * @param DOMDocument $dom DOM document.
 	 * @return array<ExtractedLink>
 	 */
-	private function extract_anchors( DOMDocument $dom, $base_url ): array {
+	private function extract_anchors( DOMDocument $dom ): array {
 		$xpath = new DOMXPath( $dom );
 		$nodes = $xpath->query( '//a[@href]' );
 
@@ -214,11 +212,10 @@ final class HtmlExtractor implements ExtractorInterface {
 	 * Extract image links from DOM.
 	 *
 	 * @since 1.0.0
-	 * @param DOMDocument  $dom      DOM document.
-	 * @param string|false $base_url Base URL for relative links.
+	 * @param DOMDocument $dom DOM document.
 	 * @return array<ExtractedLink>
 	 */
-	private function extract_images( DOMDocument $dom, $base_url ): array {
+	private function extract_images( DOMDocument $dom ): array {
 		$xpath = new DOMXPath( $dom );
 		$nodes = $xpath->query( '//img[@src]' );
 
@@ -329,11 +326,10 @@ final class HtmlExtractor implements ExtractorInterface {
 	 * Used when DOM parsing fails.
 	 *
 	 * @since 1.0.0
-	 * @param string       $content  HTML content.
-	 * @param string|false $base_url Base URL.
+	 * @param string $content HTML content.
 	 * @return array<ExtractedLink>
 	 */
-	private function extract_with_regex( string $content, $base_url ): array {
+	private function extract_with_regex( string $content ): array {
 		$links = array();
 
 		// Extract href attributes.

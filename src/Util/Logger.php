@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker\Util;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Debug logger service.
  *

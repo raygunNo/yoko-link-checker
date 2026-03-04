@@ -12,6 +12,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker\Admin;
 
+defined( 'ABSPATH' ) || exit;
+
 use YokoLinkChecker\Repository\LinkRepository;
 use YokoLinkChecker\Model\Url;
 use WP_List_Table;

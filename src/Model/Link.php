@@ -13,6 +13,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker\Model;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Link occurrence entity.
  *
@@ -141,65 +143,4 @@ final class Link {
 		);
 	}
 
-	/**
-	 * Get the source post.
-	 *
-	 * @since 1.0.0
-	 * @return \WP_Post|null
-	 */
-	public function get_source_post(): ?\WP_Post {
-		return get_post( $this->source_id );
-	}
-
-	/**
-	 * Get source title.
-	 *
-	 * @since 1.0.0
-	 * @return string
-	 */
-	public function get_source_title(): string {
-		$post = $this->get_source_post();
-		return $post ? $post->post_title : '';
-	}
-
-	/**
-	 * Get source edit URL.
-	 *
-	 * @since 1.0.0
-	 * @return string
-	 */
-	public function get_source_edit_url(): string {
-		$url = get_edit_post_link( $this->source_id, 'raw' );
-		return $url ? $url : '';
-	}
-
-	/**
-	 * Get source permalink.
-	 *
-	 * @since 1.0.0
-	 * @return string
-	 */
-	public function get_source_permalink(): string {
-		$permalink = get_permalink( $this->source_id );
-		return $permalink ? $permalink : '';
-	}
-
-	/**
-	 * Get truncated anchor text.
-	 *
-	 * @since 1.0.0
-	 * @param int $length Maximum length.
-	 * @return string
-	 */
-	public function get_truncated_anchor( int $length = 50 ): string {
-		if ( null === $this->anchor_text ) {
-			return '';
-		}
-
-		if ( mb_strlen( $this->anchor_text ) <= $length ) {
-			return $this->anchor_text;
-		}
-
-		return mb_substr( $this->anchor_text, 0, $length ) . '...';
-	}
 }

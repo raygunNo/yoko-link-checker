@@ -16,6 +16,8 @@ declare(strict_types=1);
 
 namespace YokoLinkChecker;
 
+defined( 'ABSPATH' ) || exit;
+
 /**
  * Handles plugin deactivation.
  *
@@ -94,15 +96,17 @@ final class Deactivator {
 	 * @return void
 	 */
 	private static function cleanup_transients(): void {
-		delete_transient( 'yoko_lc_flush_rewrite' );
 		delete_transient( 'yoko_lc_scan_lock' );
-		delete_transient( 'yoko_lc_rate_limit_state' );
 
 		// Clean up batch lock transients (dynamic keys).
 		global $wpdb;
 		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		$wpdb->query(
-			"DELETE FROM {$wpdb->options} WHERE option_name LIKE '_transient_yoko_lc_batch_lock_%' OR option_name LIKE '_transient_timeout_yoko_lc_batch_lock_%'"
+			$wpdb->prepare(
+				"DELETE FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s",
+				$wpdb->esc_like( '_transient_yoko_lc_batch_lock_' ) . '%',
+				$wpdb->esc_like( '_transient_timeout_yoko_lc_batch_lock_' ) . '%'
+			)
 		);
 	}
 }

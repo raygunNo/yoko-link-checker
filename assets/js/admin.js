@@ -11,12 +11,7 @@
 	'use strict';
 
 	/**
-	 * Status polling interval in milliseconds.
-	 */
-	const POLL_INTERVAL = 3000;
-
-	/**
-	 * Current polling interval ID.
+	 * Current polling timeout ID.
 	 */
 	let pollIntervalId = null;
 
@@ -24,6 +19,11 @@
 	 * Whether a poll request is currently in flight.
 	 */
 	let isPolling = false;
+
+	/**
+	 * Number of polling requests made since polling started.
+	 */
+	let pollCount = 0;
 
 	/**
 	 * Initialize the admin scripts.
@@ -43,18 +43,12 @@
 		$(document).on('click', '.ylc-resume-scan', handleResumeScan);
 		$(document).on('click', '.ylc-cancel-scan', handleCancelScan);
 
-		// Link actions
-		$(document).on('click', '.ylc-recheck-url', handleRecheckUrl);
-		$(document).on('click', '.ylc-ignore-link', handleIgnoreLink);
-		$(document).on('click', '.ylc-unignore-link', handleUnignoreLink);
-
 		// Data management
 		$(document).on('click', '.ylc-clear-data', handleClearData);
 
-		// Modal close
-		$(document).on('click', '.ylc-modal-close', closeModal);
-		$(document).on('click', '.ylc-modal', function(e) {
-			if (e.target === this) {
+		// Modal close on Escape key
+		$(document).on('keydown', function(e) {
+			if (e.key === 'Escape' || e.keyCode === 27) {
 				closeModal();
 			}
 		});
@@ -76,6 +70,22 @@
 	}
 
 	/**
+	 * Get adaptive polling interval based on poll count.
+	 *
+	 * Returns 2s for the first 10 polls, 5s for polls 10-30, then 10s.
+	 *
+	 * @return {number} Polling interval in milliseconds.
+	 */
+	function getPollInterval() {
+		if (pollCount < 10) {
+			return 2000;
+		} else if (pollCount < 30) {
+			return 5000;
+		}
+		return 10000;
+	}
+
+	/**
 	 * Start status polling.
 	 */
 	function startPolling() {
@@ -83,7 +93,20 @@
 			return;
 		}
 
-		pollIntervalId = setInterval(pollStatus, POLL_INTERVAL);
+		pollCount = 0;
+		scheduleNextPoll();
+	}
+
+	/**
+	 * Schedule the next poll using adaptive interval.
+	 */
+	function scheduleNextPoll() {
+		pollIntervalId = setTimeout(function() {
+			pollCount++;
+			pollStatus();
+			pollIntervalId = null;
+			scheduleNextPoll();
+		}, getPollInterval());
 	}
 
 	/**
@@ -91,7 +114,7 @@
 	 */
 	function stopPolling() {
 		if (pollIntervalId) {
-			clearInterval(pollIntervalId);
+			clearTimeout(pollIntervalId);
 			pollIntervalId = null;
 		}
 		isPolling = false;
@@ -148,7 +171,7 @@
 			const $scanPhase = $('.ylc-scan-phase');
 
 			if (typeof data.progress !== 'undefined') {
-				var progress = parseFloat(data.progress);
+				let progress = parseFloat(data.progress);
 				if (isNaN(progress) || progress < 0) {
 					progress = 0;
 				} else if (progress > 100) {
@@ -311,130 +334,6 @@
 			error: function() {
 				alert(ylcAdmin.strings.error);
 				$button.prop('disabled', false);
-			}
-		});
-	}
-
-	/**
-	 * Handle recheck URL click.
-	 *
-	 * @param {Event} e Click event.
-	 */
-	function handleRecheckUrl(e) {
-		e.preventDefault();
-
-		const $link = $(this);
-		const urlId = $link.data('url-id');
-		const url = $link.data('url');
-		const $row = $link.closest('tr');
-
-		// Show modal
-		$('#ylc-recheck-url').text(url);
-		$('#ylc-recheck-modal').show();
-
-		$.ajax({
-			url: ylcAdmin.ajaxUrl,
-			type: 'POST',
-			data: {
-				action: 'yoko_lc_recheck_url',
-				url_id: urlId,
-				nonce: ylcAdmin.nonce
-			},
-			success: function(response) {
-				closeModal();
-
-				if (!response || !response.success || !response.data || !response.data.url) {
-					alert((response && response.data && response.data.message) || ylcAdmin.strings.error);
-					return;
-				}
-
-				// Update row status using .text() to prevent DOM injection.
-				var urlData = response.data.url;
-				var allowedStatuses = ['ok', 'broken', 'warning', 'ignored', 'error', 'redirect', 'pending', 'valid'];
-				var safeStatus = allowedStatuses.indexOf(urlData.status) !== -1 ? urlData.status : 'unknown';
-				var $statusCell = $row.find('.ylc-status');
-				$statusCell
-					.removeClass()
-					.addClass('ylc-status ylc-status-' + safeStatus)
-					.text(capitalizeFirst(safeStatus));
-
-				var $codeCell = $row.find('.ylc-code');
-				$codeCell.text(urlData.http_code || '\u2014');
-			},
-			error: function() {
-				closeModal();
-				alert(ylcAdmin.strings.error);
-			}
-		});
-	}
-
-	/**
-	 * Handle ignore link click.
-	 *
-	 * @param {Event} e Click event.
-	 */
-	function handleIgnoreLink(e) {
-		e.preventDefault();
-
-		if (!confirm(ylcAdmin.strings.confirmIgnore)) {
-			return;
-		}
-
-		const $link = $(this);
-		const linkId = $link.data('link-id');
-		const $row = $link.closest('tr');
-
-		$.ajax({
-			url: ylcAdmin.ajaxUrl,
-			type: 'POST',
-			data: {
-				action: 'yoko_lc_ignore_link',
-				link_id: linkId,
-				nonce: ylcAdmin.nonce
-			},
-			success: function(response) {
-				if (!response || !response.success) {
-					alert((response && response.data && response.data.message) || ylcAdmin.strings.error);
-					return;
-				}
-				$row.fadeOut(function() {
-					$(this).remove();
-				});
-			},
-			error: function() {
-				alert(ylcAdmin.strings.error);
-			}
-		});
-	}
-
-	/**
-	 * Handle unignore link click.
-	 *
-	 * @param {Event} e Click event.
-	 */
-	function handleUnignoreLink(e) {
-		e.preventDefault();
-
-		var $button = $(this);
-		var linkId = $button.data('link-id');
-
-		$.ajax({
-			url: ylcAdmin.ajaxUrl,
-			type: 'POST',
-			data: {
-				action: 'yoko_lc_unignore_link',
-				link_id: linkId,
-				nonce: ylcAdmin.nonce
-			},
-			success: function(response) {
-				if (!response || !response.success) {
-					alert((response && response.data && response.data.message) || ylcAdmin.strings.error);
-					return;
-				}
-				location.reload();
-			},
-			error: function() {
-				alert(ylcAdmin.strings.error);
 			}
 		});
 	}
