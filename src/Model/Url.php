@@ -236,5 +236,4 @@ final class Url {
 			'ignore_reason'  => $this->ignore_reason,
 		);
 	}
-
 }

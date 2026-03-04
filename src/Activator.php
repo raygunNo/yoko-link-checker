@@ -191,5 +191,4 @@ final class Activator {
 			$admin_role->add_cap( 'yoko_lc_manage_settings' );
 		}
 	}
-
 }

@@ -199,5 +199,4 @@ final class Scan {
 			'options'         => wp_json_encode( $this->options ),
 		);
 	}
-
 }

@@ -113,6 +113,7 @@ final class UrlRepository {
 		// phpcs:disable WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching
 		// phpcs:disable WordPress.DB.PreparedSQL.InterpolatedNotPrepared -- Table name is safe.
 		// phpcs:disable WordPress.DB.PreparedSQL.NotPrepared -- Placeholders are generated safely above.
+		// phpcs:disable WordPress.DB.PreparedSQLPlaceholders.UnfinishedPrepare -- Placeholders are built dynamically.
 		$rows = $wpdb->get_results(
 			$wpdb->prepare(
 				"SELECT * FROM {$this->table} WHERE url_hash IN ({$placeholders})",
@@ -123,7 +124,7 @@ final class UrlRepository {
 
 		$result = array();
 		foreach ( $rows as $row ) {
-			$url                    = Url::from_row( $row );
+			$url                      = Url::from_row( $row );
 			$result[ $url->url_hash ] = $url;
 		}
 

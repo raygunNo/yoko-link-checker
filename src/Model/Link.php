@@ -142,5 +142,4 @@ final class Link {
 			'updated_at'    => $this->updated_at,
 		);
 	}
-
 }

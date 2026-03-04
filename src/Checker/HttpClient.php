@@ -408,7 +408,7 @@ final class HttpClient {
 			if ( isset( self::$dns_cache[ $host ] ) ) {
 				$ip = self::$dns_cache[ $host ];
 			} else {
-				$ip = gethostbyname( $host );
+				$ip                       = gethostbyname( $host );
 				self::$dns_cache[ $host ] = $ip;
 			}
 			if ( $ip === $host ) {
