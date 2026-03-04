@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.8] - 2026-03-03
+
+### Fixed
+- Internal URLs that can't be verified via WordPress functions now fall back to HTTP check
+- Internal 404 pages are now correctly flagged as "broken" instead of "warning"
+- Custom routes, plugin pages, and archive URLs are now properly verified
+
+### Added
+- `check_internal_url_via_http()` method for fallback HTTP verification
+- `yoko_lc_internal_http_args` filter for customizing internal HTTP request arguments
+- Short timeout (3 seconds) for internal HTTP checks to prevent delays
+
 ## [1.0.7] - 2026-03-03
 
 ### Changed

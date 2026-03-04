@@ -432,11 +432,103 @@ class BatchProcessor {
 			return;
 		}
 
-		// Could not verify URL via WordPress functions.
-		// Mark as warning so it can be manually reviewed.
-		$url->status        = Url::STATUS_WARNING;
-		$url->http_code     = null;
-		$url->error_message = __( 'Internal URL could not be verified. May be a custom route or archive.', 'yoko-link-checker' );
+		// WordPress functions couldn't verify the URL.
+		// Fall back to HTTP request to get actual status.
+		// This handles custom routes, plugin pages, archive pages, etc.
+		$this->check_internal_url_via_http( $url );
+	}
+
+	/**
+	 * Check internal URL via HTTP request as fallback.
+	 *
+	 * Used when WordPress functions can't verify the URL.
+	 * Uses a short timeout since internal requests should be fast.
+	 *
+	 * @since 1.0.8
+	 * @param Url $url URL model.
+	 * @return void
+	 */
+	private function check_internal_url_via_http( Url $url ): void {
+		// Use a short timeout for internal requests (same server = fast).
+		$args = array(
+			'timeout'     => 3,
+			'redirection' => 3,
+			'sslverify'   => false, // Same server, skip SSL verification.
+			'user-agent'  => 'Yoko Link Checker Internal Check',
+		);
+
+		/**
+		 * Filters the HTTP request arguments for internal URL fallback checks.
+		 *
+		 * @since 1.0.8
+		 * @param array  $args HTTP request arguments.
+		 * @param string $url  URL being checked.
+		 */
+		$args = apply_filters( 'yoko_lc_internal_http_args', $args, $url->url );
+
+		// Use HEAD request first (faster, less resource-intensive).
+		$response = wp_remote_head( $url->url, $args );
+
+		// If HEAD fails with 405, try GET.
+		if ( ! is_wp_error( $response ) ) {
+			$code = wp_remote_retrieve_response_code( $response );
+			if ( 405 === $code ) {
+				$response = wp_remote_get( $url->url, $args );
+			}
+		}
+
+		if ( is_wp_error( $response ) ) {
+			$error_message = $response->get_error_message();
+
+			// Check if it's a timeout.
+			if ( strpos( $error_message, 'timed out' ) !== false || strpos( $error_message, 'timeout' ) !== false ) {
+				$url->status        = Url::STATUS_TIMEOUT;
+				$url->http_code     = null;
+				$url->error_message = $error_message;
+			} else {
+				// Other errors (connection refused, DNS failure, etc.) = likely broken.
+				$url->status        = Url::STATUS_BROKEN;
+				$url->http_code     = null;
+				$url->error_message = $error_message;
+			}
+			$this->url_repository->update( $url );
+			return;
+		}
+
+		$http_code      = wp_remote_retrieve_response_code( $response );
+		$url->http_code = $http_code;
+
+		// Classify the response code.
+		if ( $http_code >= 200 && $http_code < 300 ) {
+			$url->status = Url::STATUS_VALID;
+		} elseif ( $http_code >= 300 && $http_code < 400 ) {
+			$url->status = Url::STATUS_REDIRECT;
+			// Capture redirect URL if available.
+			$headers = wp_remote_retrieve_headers( $response );
+			if ( isset( $headers['location'] ) ) {
+				$url->redirect_url = is_array( $headers['location'] ) ? $headers['location'][0] : $headers['location'];
+			}
+		} elseif ( 401 === $http_code || 403 === $http_code ) {
+			// Auth required or forbidden - could be intentional, mark as warning.
+			$url->status        = Url::STATUS_BLOCKED;
+			$url->error_message = __( 'Access denied (authentication required or forbidden).', 'yoko-link-checker' );
+		} elseif ( $http_code >= 400 && $http_code < 500 ) {
+			// 4xx errors (including 404) = broken.
+			$url->status = Url::STATUS_BROKEN;
+		} elseif ( $http_code >= 500 ) {
+			// 5xx server errors = broken.
+			$url->status        = Url::STATUS_BROKEN;
+			$url->error_message = __( 'Server error.', 'yoko-link-checker' );
+		} else {
+			// Unexpected code.
+			$url->status        = Url::STATUS_WARNING;
+			$url->error_message = sprintf(
+				/* translators: %d: HTTP status code */
+				__( 'Unexpected HTTP status code: %d', 'yoko-link-checker' ),
+				$http_code
+			);
+		}
+
 		$this->url_repository->update( $url );
 	}
 
