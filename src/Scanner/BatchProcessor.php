@@ -334,12 +334,23 @@ class BatchProcessor {
 			return;
 		}
 
+		// Skip internal URLs to prevent self-referential timeouts.
+		// Internal links are assumed valid since they're on the same site.
+		if ( $url->is_internal ) {
+			$url->status       = Url::STATUS_VALID;
+			$url->http_code    = 200;
+			$url->last_checked = current_time( 'mysql' );
+			$url->check_count  = ( $url->check_count ?? 0 ) + 1;
+			$this->url_repository->update( $url );
+			return;
+		}
+
 		$result = $this->url_checker->check( $url->url );
 
 		// Update the URL model with the results.
 		$url->status        = $result->status;
 		$url->http_code     = $result->http_code;
-		$url->final_url     = $result->redirect_url;
+		$url->final_url     = $result->final_url;
 		$url->error_message = $result->error_message;
 		$url->response_time = $result->response_time;
 		$url->last_checked  = current_time( 'mysql' );

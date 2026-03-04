@@ -93,6 +93,11 @@ composer run phpcs
 
 ## Changelog
 
+### 1.0.2
+- Fixed undefined property warning for `redirect_url`
+- Fixed upstream timeouts by skipping internal URL checks (self-referential requests)
+- Internal URLs now automatically marked as valid
+
 ### 1.0.1
 - Fixed AJAX action name mismatch preventing scanner from starting
 - Fixed incorrect namespace reference causing status check errors
