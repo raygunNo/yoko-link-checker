@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-03-03
+
+### Added
+- Parallel HTTP requests for external URL checking
+- SSRF protection blocking private/internal IP ranges
+- Concurrent batch execution protection via transient locks
+- Database schema version tracking for automatic upgrades
+- Composite index for improved query performance
+
+### Changed
+- Improved PHP coding standards compliance (PSR-2)
+- Enhanced error logging with structured context arrays
+- Optimized CSV export with streaming output
+
+### Fixed
+- Resolved N+1 query pattern in discovery phase
+- Fixed race condition in find-or-create URL logic
+- Corrected closing brace positioning per PSR-2
+- Fixed count() usage inside loop conditions
+
 ## [1.0.8] - 2026-03-03
 
 ### Fixed

@@ -179,14 +179,26 @@ class ScanOrchestrator {
 
 		try {
 			$scan = $this->scan_repository->find( $scan_id );
-			Logger::debug( 'process_batch', array( 'scan_id' => $scan_id, 'found' => (bool) $scan ) );
+			Logger::debug(
+				'process_batch',
+				array(
+					'scan_id' => $scan_id,
+					'found'   => (bool) $scan,
+				)
+			);
 
 			if ( ! $scan ) {
 				Logger::debug( 'process_batch - No scan found, returning' );
 				return;
 			}
 
-			Logger::debug( 'process_batch - Scan state', array( 'status' => $scan->status, 'phase' => $scan->current_phase ) );
+			Logger::debug(
+				'process_batch - Scan state',
+				array(
+					'status' => $scan->status,
+					'phase'  => $scan->current_phase,
+				)
+			);
 
 			if ( Scan::STATUS_RUNNING !== $scan->status ) {
 				Logger::debug( 'process_batch - Scan not running, returning' );
@@ -202,7 +214,14 @@ class ScanOrchestrator {
 			if ( Scan::PHASE_DISCOVERY === $scan->current_phase ) {
 				Logger::debug( 'Calling process_discovery_phase' );
 				$state = $this->process_discovery_phase( $scan );
-				Logger::debug( 'Discovery phase result', $state ? array( 'total' => $state->total, 'processed' => $state->processed, 'complete' => $state->complete ) : array() );
+				Logger::debug(
+					'Discovery phase result',
+					$state ? array(
+						'total'     => $state->total,
+						'processed' => $state->processed,
+						'complete'  => $state->complete,
+					) : array()
+				);
 			} elseif ( Scan::PHASE_CHECKING === $scan->current_phase ) {
 				Logger::debug( 'Calling process_checking_phase' );
 				$state = $this->process_checking_phase( $scan );

@@ -408,9 +408,9 @@ final class UrlChecker {
 			'verify'           => $wp_args['sslverify'] ?? true,
 		);
 
-		$requests      = array();
-		$ssrf_blocked  = array();
-		$start_time    = microtime( true );
+		$requests     = array();
+		$ssrf_blocked = array();
+		$start_time   = microtime( true );
 
 		foreach ( $urls as $url ) {
 			$ssrf_error = $this->http_client->validate_url_ssrf( $url );
@@ -430,7 +430,11 @@ final class UrlChecker {
 		}
 
 		try {
-			/** @var array<string, \WpOrg\Requests\Response|\WpOrg\Requests\Exception> $responses */
+			/**
+			 * Results from parallel HTTP requests.
+			 *
+			 * @var array<string, \WpOrg\Requests\Response|\WpOrg\Requests\Exception> $responses
+			 */
 			$responses = $requests_class::request_multiple( $requests, $options );
 		} catch ( \Throwable $e ) {
 			Logger::debug( 'Parallel request_multiple failed', array( 'error' => $e->getMessage() ) );
@@ -497,9 +501,9 @@ final class UrlChecker {
 				continue;
 			}
 
-			$http_code  = (int) $response->status_code;
-			$final_url  = $url;
-			$redirects  = 0;
+			$http_code = (int) $response->status_code;
+			$final_url = $url;
+			$redirects = 0;
 
 			if ( ! empty( $response->history ) ) {
 				$redirects = count( $response->history );
@@ -536,5 +540,4 @@ final class UrlChecker {
 
 		return $results;
 	}
-
 }

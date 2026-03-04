@@ -151,5 +151,4 @@ final class ContentDiscovery {
 
 		return array_values( $posts );
 	}
-
 }

@@ -149,5 +149,4 @@ final class CheckResult {
 			$error_message
 		);
 	}
-
 }

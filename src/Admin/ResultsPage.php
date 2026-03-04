@@ -257,6 +257,7 @@ class ResultsPage {
 
 		// Disable output buffering to stream directly to the client.
 		// phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- ob_end_clean may warn if no buffer active.
+		// phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedWhile -- Intentionally empty loop body to clear all buffers.
 		while ( @ob_end_clean() ) {
 			// Clear all output buffers.
 		}
@@ -302,7 +303,8 @@ class ResultsPage {
 				)
 			);
 
-			if ( ++$row_count % 500 === 0 ) {
+			++$row_count;
+			if ( 0 === $row_count % 500 ) {
 				// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fflush
 				fflush( $output );
 			}

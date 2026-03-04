@@ -349,5 +349,4 @@ final class UrlNormalizer {
 
 		return $url_host === $home_host;
 	}
-
 }

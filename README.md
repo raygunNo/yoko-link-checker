@@ -2,7 +2,7 @@
 
 A performant, extensible broken link checker for WordPress. Scans content for links, checks their validity, and reports issues.
 
-**Version:** 1.0.8 | **Requirements:** WordPress 6.0+ | PHP 8.0+
+**Version:** 1.1.0 | **Requirements:** WordPress 6.0+ | PHP 8.0+
 
 ## Description
 
@@ -150,6 +150,13 @@ add_action( 'yoko_lc_scan_completed', fn($scan) => wp_mail(...) );
 ```
 
 ## Changelog
+
+### 1.1.0
+- **Added**: Parallel HTTP requests for external URL checking
+- **Added**: SSRF protection blocking private/internal IP ranges
+- **Added**: Database schema version tracking for automatic upgrades
+- **Changed**: Improved PHP coding standards compliance (PSR-2)
+- **Fixed**: N+1 query patterns, race conditions, and various code quality issues
 
 ### 1.0.8
 - **Fixed**: Internal 404s now correctly flagged as broken instead of warning

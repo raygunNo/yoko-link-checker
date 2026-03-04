@@ -665,8 +665,9 @@ final class LinkRepository {
 				yield $row;
 			}
 
-			$last_id = (int) end( $rows )->id;
-		} while ( count( $rows ) === $chunk_size );
+			$last_id    = (int) end( $rows )->id;
+			$rows_count = count( $rows );
+		} while ( $rows_count === $chunk_size );
 	}
 
 	/**

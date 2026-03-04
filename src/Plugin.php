@@ -441,5 +441,4 @@ final class Plugin {
 
 		return $this->services[ $key ];
 	}
-
 }

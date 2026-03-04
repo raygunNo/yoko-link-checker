@@ -298,5 +298,4 @@ final class StatusClassifier {
 				return __( 'Unknown status.', 'yoko-link-checker' );
 		}
 	}
-
 }

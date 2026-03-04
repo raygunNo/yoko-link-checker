@@ -121,13 +121,26 @@ class BatchProcessor {
 	 * @return ScanState Current state after processing.
 	 */
 	public function process_discovery_batch( int $scan_id, int $after_id = 0, int $batch_size = 50 ): ScanState {
-		Logger::debug( 'process_discovery_batch', array( 'scan_id' => $scan_id, 'after_id' => $after_id, 'batch_size' => $batch_size ) );
+		Logger::debug(
+			'process_discovery_batch',
+			array(
+				'scan_id'    => $scan_id,
+				'after_id'   => $after_id,
+				'batch_size' => $batch_size,
+			)
+		);
 
 		$posts       = $this->content_discovery->get_batch( $after_id, $batch_size );
 		$total_posts = $this->content_discovery->count_posts();
 		$last_id     = $after_id;
 
-		Logger::debug( 'process_discovery_batch - got posts', array( 'count' => count( $posts ), 'total_posts' => $total_posts ) );
+		Logger::debug(
+			'process_discovery_batch - got posts',
+			array(
+				'count'       => count( $posts ),
+				'total_posts' => $total_posts,
+			)
+		);
 
 		foreach ( $posts as $post ) {
 			$this->process_post( $scan_id, $post );
@@ -137,7 +150,13 @@ class BatchProcessor {
 		$processed_count = count( $posts );
 		$complete        = $processed_count < $batch_size;
 
-		Logger::debug( 'process_discovery_batch - results', array( 'processed_count' => $processed_count, 'complete' => $complete ) );
+		Logger::debug(
+			'process_discovery_batch - results',
+			array(
+				'processed_count' => $processed_count,
+				'complete'        => $complete,
+			)
+		);
 
 		// Update scan state.
 		$scan = $this->scan_repository->find( $scan_id );
@@ -297,7 +316,13 @@ class BatchProcessor {
 							/** This action is documented in BatchProcessor::check_url() */
 							do_action( 'yoko_lc_url_checked', $url, $result );
 						} catch ( \Throwable $e ) {
-							Logger::error( 'Failed to update URL after parallel check', array( 'url_id' => $url->id, 'error' => $e->getMessage() ) );
+							Logger::error(
+								'Failed to update URL after parallel check',
+								array(
+									'url_id' => $url->id,
+									'error'  => $e->getMessage(),
+								)
+							);
 						}
 					} else {
 						// No result for this URL; fall back to sequential check.
@@ -305,7 +330,13 @@ class BatchProcessor {
 							$this->check_url( $url );
 							++$actual_checked;
 						} catch ( \Throwable $e ) {
-							Logger::error( 'URL check failed', array( 'url_id' => $url->id, 'error' => $e->getMessage() ) );
+							Logger::error(
+								'URL check failed',
+								array(
+									'url_id' => $url->id,
+									'error'  => $e->getMessage(),
+								)
+							);
 							$this->mark_url_error( $url, $e->getMessage() );
 							++$actual_checked;
 						}
@@ -319,7 +350,13 @@ class BatchProcessor {
 						$this->check_url( $url );
 						++$actual_checked;
 					} catch ( \Throwable $e ) {
-						Logger::error( 'URL check failed', array( 'url_id' => $url->id, 'error' => $e->getMessage() ) );
+						Logger::error(
+							'URL check failed',
+							array(
+								'url_id' => $url->id,
+								'error'  => $e->getMessage(),
+							)
+						);
 						$this->mark_url_error( $url, $e->getMessage() );
 						++$actual_checked;
 					}
@@ -334,7 +371,13 @@ class BatchProcessor {
 				$this->check_url( $url );
 				++$actual_checked;
 			} catch ( \Throwable $e ) {
-				Logger::error( 'URL check failed', array( 'url_id' => $url->id, 'error' => $e->getMessage() ) );
+				Logger::error(
+					'URL check failed',
+					array(
+						'url_id' => $url->id,
+						'error'  => $e->getMessage(),
+					)
+				);
 				$this->mark_url_error( $url, $e->getMessage() );
 				++$actual_checked;
 			}
@@ -439,7 +482,13 @@ class BatchProcessor {
 		try {
 			$this->url_repository->update( $url );
 		} catch ( \Throwable $update_error ) {
-			Logger::error( 'Failed to update URL after error', array( 'url_id' => $url->id, 'error' => $update_error->getMessage() ) );
+			Logger::error(
+				'Failed to update URL after error',
+				array(
+					'url_id' => $url->id,
+					'error'  => $update_error->getMessage(),
+				)
+			);
 		}
 	}
 
